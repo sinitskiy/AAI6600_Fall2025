@@ -273,6 +273,29 @@ def adapt_llm_output(llm_data: Dict[str, Any]) -> Dict[str, Any]:
         'user_input': str(user_input)
     }
     
+    # Preserve optional fields returned by LLM (if present)
+    if 'symptoms' in llm_data:
+        standardized['symptoms'] = str(llm_data.get('symptoms'))
+    # Location may be nested dict or separate fields
+    if 'location' in llm_data and isinstance(llm_data['location'], dict):
+        standardized['location'] = llm_data['location']
+    else:
+        # Try to pick up city/state fields if present
+        city = llm_data.get('city') or llm_data.get('city_raw')
+        state = llm_data.get('state') or llm_data.get('state_raw')
+        if city or state:
+            standardized['location'] = {'city': city or '', 'state': state or ''}
+
+    if 'insurance' in llm_data and isinstance(llm_data['insurance'], dict):
+        standardized['insurance'] = llm_data['insurance']
+    else:
+        # try common insurance fields
+        if any(k in llm_data for k in ('has_insurance', 'provider')):
+            standardized['insurance'] = {
+                'has_insurance': bool(llm_data.get('has_insurance', False)),
+                'provider': llm_data.get('provider', '')
+            }
+    
     # Validate before returning
     is_valid, error = validate_classification(standardized)
     if not is_valid:

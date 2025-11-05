@@ -27,8 +27,8 @@ sys.path.insert(0, str(integrated_dir))
 
 # Import existing modules
 from group2_router import handle_group2_input
-import facility_scorer
 import pandas as pd
+import numpy as np
 import json
 
 # Mapping full state names (lowercase) to 2-letter codes
@@ -71,42 +71,74 @@ def fast_search_scored_csv(scored_csv_path, city=None, state=None, top_n=5):
     the full scorer for production-quality matching.
     """
 
-    df = pd.read_csv(scored_csv_path, dtype=str)
+    # Read only the necessary columns to reduce memory usage
+    usecols = [
+        'name', 'street', 'city', 'state', 'zipcode', 'phone',
+        'overall_care_needs_score', 'affordability_score', 'crisis_care_score'
+    ]
+    
+    try:
+        # Read CSV with optimized settings
+        df = pd.read_csv(
+            scored_csv_path,
+            dtype={
+                'name': str, 'street': str, 'city': str, 'state': str,
+                'zipcode': str, 'phone': str,
+                'overall_care_needs_score': float,
+                'affordability_score': float,
+                'crisis_care_score': float
+            },
+            usecols=lambda x: x in usecols,  # Only read needed columns
+            na_values=['', 'NA', 'N/A'],  # Handle missing values
+            low_memory=True  # Enable memory optimization
+        )
+    except Exception as e:
+        print(f"Warning: Optimized loading failed, falling back to basic load: {e}")
+        df = pd.read_csv(scored_csv_path, dtype=str)
+        
+        # Normalize and coerce numeric score columns if present
+        for col in ['overall_care_needs_score', 'affordability_score', 'crisis_care_score']:
+            if col in df.columns:
+                # coerce to float where possible
+                df[col] = pd.to_numeric(df[col], errors='coerce')
 
-    # Normalize and coerce numeric score columns if present
-    for col in ['overall_care_needs_score', 'affordability_score', 'crisis_care_score']:
-        if col in df.columns:
-            # coerce to float where possible
-            df[col] = pd.to_numeric(df[col], errors='coerce')
+    try:
+        # Apply filters with error handling
+        if state:
+            try:
+                state_code = state.upper()
+                state_mask = df['state'].str.strip().str.upper() == state_code
+                df = df[state_mask]
+            except Exception as e:
+                print(f"Warning: State filtering failed: {e}")
 
-    # Filter by state (exact uppercase match) if provided
-    if state:
-        try:
-            state_code = state.upper()
-            df = df[df['state'].str.strip().str.upper() == state_code]
-        except Exception:
-            # if state column missing or other issue, ignore filter
-            pass
+        if city:
+            try:
+                city_mask = df['city'].str.contains(city, case=False, na=False)
+                df = df[city_mask]
+            except Exception as e:
+                print(f"Warning: City filtering failed: {e}")
 
-    # Filter by city (case-insensitive contains) if provided
-    if city:
-        try:
-            df = df[df['city'].str.contains(city, case=False, na=False)]
-        except Exception:
-            pass
+        # Sort efficiently using stable sort for consistency
+        sort_column = None
+        if 'overall_care_needs_score' in df.columns:
+            sort_column = 'overall_care_needs_score'
+        elif 'affordability_score' in df.columns:
+            sort_column = 'affordability_score'
+        elif 'name' in df.columns:
+            sort_column = 'name'
 
-    # Sort by overall score if available, otherwise fallback to any score or name
-    if 'overall_care_needs_score' in df.columns:
-        df = df.sort_values('overall_care_needs_score', ascending=False)
-    elif 'affordability_score' in df.columns:
-        df = df.sort_values('affordability_score', ascending=False)
-    elif 'name' in df.columns:
-        df = df.sort_values('name')
+        if sort_column:
+            df = df.nlargest(top_n, sort_column) if sort_column != 'name' else df.nsmallest(top_n, sort_column)
+        else:
+            df = df.head(top_n)  # Fallback if no sort column found
 
-    # Return top N as list of dicts
-    top = df.head(top_n)
-    # Convert NaNs to None for cleanliness
-    records = top.where(pd.notnull(top), None).to_dict(orient='records')
+        # Convert to records efficiently
+        records = df.replace({np.nan: None}).to_dict(orient='records')
+        
+    except Exception as e:
+        print(f"Warning: Error during filtering/sorting: {e}")
+        records = []
     return records
 
 
@@ -189,34 +221,137 @@ def format_facility_results(facilities, output_format='simple'):
 
 def mock_classify_conversation(conversation_history):
     """
-    MOCK CLASSIFIER - Simulates what Group 2's classifier would do
-    
-    This function will be REPLACED by Subgroup A's LLM integration.
-    For now, it returns a hardcoded classification for testing.
-    
-    Args:
-        conversation_history: list of dict with 'role' and 'message'
-    
+    LLM-backed conversation handler.
+
+    Behavior:
+    - If OpenAI python package is available and OPENAI_API_KEY is set, use the Chat API
+      to analyze the provided `conversation_history`, conduct up to a small number
+      of follow-up questions (interactive via input()) to extract missing fields,
+      and return a structured dictionary.
+    - If OpenAI isn't available or API key is missing, fall back to a lightweight
+      heuristic that summarizes user messages (keeps prior mock behavior).
+
     Returns:
-        dict: {
-            'category': str,
-            'confidence': float (0-1),
-            'user_input': str (summary)
-        }
+        dict: must contain 'category', 'confidence', 'user_input'. May also include
+              optional fields: 'symptoms', 'location' (dict), 'insurance' (dict).
     """
-    
-    # TODO: This will be replaced by Subgroup A's LLM
-    # For now, return mock data for testing
-    
-    # Extract user messages
-    user_messages = [msg['message'] for msg in conversation_history if msg['role'] == 'USER']
-    combined_input = " ".join(user_messages)
-    
-    # Mock classification (TODO: Replace with real LLM)
+
+    # Gather existing user messages into a single text blob
+    user_messages = [msg.get('message', '') for msg in conversation_history if msg.get('role') == 'USER']
+    conversation_text = "\n".join(user_messages).strip()
+
+    # Try to use OpenAI ChatCompletion if available
+    try:
+        import openai
+        OPENAI_KEY = os.getenv('OPENAI_API_KEY') or os.getenv('OPENAI_APIKEY')
+        if not OPENAI_KEY:
+            raise RuntimeError('OPENAI_API_KEY not found in environment')
+
+        openai.api_key = OPENAI_KEY
+
+        system_prompt = (
+            "You are a helpful clinical intake assistant. Conduct a natural, empathetic "
+            "conversation only to the extent needed to extract the following structured "
+            "information from the user: category (one short category label), confidence "
+            "(0-1 or 0-100), user_input (short summary), symptoms (brief), location {city, state}, "
+            "insurance {has_insurance: bool, provider: str or empty}. If information is missing, "
+            "ask one concise follow-up question. After you have the information, reply with ONLY a JSON object"
+            " (no additional text) containing these fields. Make confidence numeric.")
+
+        # Build chat history for the model: include prior conversation as user/system turns
+        messages = [
+            {'role': 'system', 'content': system_prompt},
+        ]
+
+        # Append conversation history preserving roles
+        for msg in conversation_history:
+            role = msg.get('role', 'USER')
+            content = msg.get('message', '')
+            # Map local roles to chat roles
+            chat_role = 'user' if role.upper() in ('USER', 'U') else 'assistant' if role.upper() in ('BOT', 'SYSTEM') else 'user'
+            messages.append({'role': chat_role, 'content': content})
+
+        # We'll allow a small interactive loop: up to 3 follow-ups to collect required fields
+        max_rounds = 3
+        for round_i in range(max_rounds):
+            # Choose model: prefer gpt-4 if available, else gpt-3.5-turbo
+            model = os.getenv('OPENAI_MODEL', 'gpt-4')
+            try:
+                resp = openai.ChatCompletion.create(model=model, messages=messages, temperature=0.2)
+            except Exception:
+                # fallback to cheaper model
+                resp = openai.ChatCompletion.create(model='gpt-3.5-turbo', messages=messages, temperature=0.2)
+
+            assistant_msg = resp['choices'][0]['message']['content'].strip()
+
+            # Try to extract JSON from assistant message
+            parsed = None
+            try:
+                parsed = json.loads(assistant_msg)
+            except Exception:
+                # try to find a JSON substring
+                import re
+                m = re.search(r"\{(?:.|\n)*\}", assistant_msg)
+                if m:
+                    try:
+                        parsed = json.loads(m.group(0))
+                    except Exception:
+                        parsed = None
+
+            # If parsed and contains required keys, return it
+            if isinstance(parsed, dict) and all(k in parsed for k in ('category', 'confidence', 'user_input')):
+                # Normalize location/insurance if present
+                return parsed
+
+            # If the assistant returned a follow-up question as text, present to user
+            # Heuristic: treat non-JSON as a follow-up question
+            follow_up = None
+            if not parsed:
+                follow_up = assistant_msg
+            else:
+                # parsed but missing fields -> ask assistant to generate single follow-up
+                follow_up = (parsed.get('follow_up_question') or
+                             parsed.get('clarifying_question') or
+                             "Could you tell me your city and state? (or type 'skip')")
+
+            # Ask user and append reply to messages
+            try:
+                reply = input(f"{follow_up}\n> ").strip()
+            except Exception:
+                # non-interactive environment: break and fallback
+                break
+
+            messages.append({'role': 'user', 'content': reply})
+
+        # If loop ends without structured full result, try one last analysis pass (no follow-ups)
+        final_resp = openai.ChatCompletion.create(
+            model='gpt-3.5-turbo',
+            messages=messages + [{'role': 'system', 'content': 'Now produce the requested JSON with the fields.'}],
+            temperature=0.0
+        )
+        final_text = final_resp['choices'][0]['message']['content'].strip()
+        try:
+            final_parsed = json.loads(final_text)
+            if isinstance(final_parsed, dict) and 'category' in final_parsed:
+                return final_parsed
+        except Exception:
+            pass
+
+        # If still no structured result, fall through to fallback below
+
+    except Exception as e:
+        # Any failure to use the OpenAI path should not crash the pipeline.
+        print(f"LLM integration unavailable or failed: {e}")
+
+    # Fallback heuristic: summarize user messages and return low-confidence classification
+    combined_input = conversation_text or ""
     return {
-        'category': 'Mental health',  # Hardcoded for testing
-        'confidence': 0.85,           # Mock confidence
-        'user_input': combined_input[:200]  # First 200 chars
+        'category': 'Mental health',
+        'confidence': 0.6,
+        'user_input': combined_input[:100],
+        'symptoms': combined_input,
+        'location': {},
+        'insurance': {}
     }
 
 
@@ -424,6 +559,17 @@ def call_facility_matcher(classification, additional_info):
     # No pre-scored CSV found
     print("\n⚠️  No pre-scored dataset found at Group3_dataset/all_facilities_scored.csv.")
     print("Please add a scored CSV to that path or run scoring via integrated/facility_scorer.py")
+    # If caller wants to run the full scorer, import it lazily so module import doesn't
+    # immediately require heavy ML dependencies (sentence-transformers, etc.).
+    try:
+        import facility_scorer
+        # Note: the integration path to run the full scorer can be implemented here
+        # (e.g., call facility_scorer.score_csv_file or similar). For now, we simply
+        # inform the user and return None.
+    except Exception:
+        # If importing the scorer fails, keep behavior minimal and inform the user.
+        pass
+
     return None
 
 
