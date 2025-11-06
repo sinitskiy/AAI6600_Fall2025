@@ -49,7 +49,7 @@ STATE_MAPPING = {
 }
 
 
-def fast_search_scored_csv(scored_csv_path, city=None, state=None, top_n=5):
+def fast_search_scored_csv(scored_csv_path, city=None, state=None, zipcode=None, top_n=5):
     """
     Lightweight search over a pre-scored CSV file.
 
@@ -60,7 +60,8 @@ def fast_search_scored_csv(scored_csv_path, city=None, state=None, top_n=5):
       exists on disk and we want quick filtering/sorting.
 
     Behavior:
-    - Reads `scored_csv_path` via pandas, filters by `state` and `city` if provided,
+    - Reads `scored_csv_path` via pandas, filters by `state`, `city`, and `zipcode`
+      (when provided),
       sorts by `overall_care_needs_score` (if present) and returns up to `top_n`
       records as a list of dictionaries.
     - Falls back to simple alphabetical/available-score sorting when score
@@ -73,7 +74,7 @@ def fast_search_scored_csv(scored_csv_path, city=None, state=None, top_n=5):
 
     # Read only the necessary columns to reduce memory usage
     usecols = [
-        'name', 'street', 'city', 'state', 'zipcode', 'phone',
+        'name', 'street', 'city', 'state', 'zipcode', 'zip', 'phone',
         'overall_care_needs_score', 'affordability_score', 'crisis_care_score'
     ]
     
@@ -83,7 +84,7 @@ def fast_search_scored_csv(scored_csv_path, city=None, state=None, top_n=5):
             scored_csv_path,
             dtype={
                 'name': str, 'street': str, 'city': str, 'state': str,
-                'zipcode': str, 'phone': str,
+                'zipcode': str, 'zip': str, 'phone': str,
                 'overall_care_needs_score': float,
                 'affordability_score': float,
                 'crisis_care_score': float
@@ -118,6 +119,30 @@ def fast_search_scored_csv(scored_csv_path, city=None, state=None, top_n=5):
                 df = df[city_mask]
             except Exception as e:
                 print(f"Warning: City filtering failed: {e}")
+
+        if zipcode:
+            try:
+                target_zip = ''.join(ch for ch in str(zipcode) if ch.isdigit())
+                if target_zip:
+                    df_before_zip = df.copy()
+                    zip_mask = pd.Series(False, index=df.index)
+                    has_zip_col = False
+                    for zcol in ('zipcode', 'zip'):
+                        if zcol in df.columns:
+                            has_zip_col = True
+                            normalized = (
+                                df[zcol]
+                                .fillna('')
+                                .astype(str)
+                                    .str.replace(r'\D', '', regex=True)
+                            )
+                            zip_mask = zip_mask | normalized.str.startswith(target_zip)
+                    if has_zip_col:
+                        df = df[zip_mask]
+                        if df.empty:
+                            df = df_before_zip
+            except Exception as e:
+                print(f"Warning: Zipcode filtering failed: {e}")
 
         # Sort efficiently using stable sort for consistency
         sort_column = None
@@ -368,7 +393,7 @@ def collect_additional_info():
     
     Returns:
         dict: {
-            'location': {'city': str, 'state': str},
+            'location': {'city': str, 'state': str, 'zip': str},
             'insurance': {'has_insurance': bool, 'provider': str}
         }
     """
@@ -386,8 +411,9 @@ def collect_additional_info():
     # Instructions:
     # 1. Ask user for their city
     # 2. Ask user for their state (2-letter code like "NC")
-    # 3. Store in a dictionary with keys 'city' and 'state'
-    # 4. Return the location dict
+    # 3. Ask user for their ZIP code (optional) with basic validation
+    # 4. Store in a dictionary with keys 'city', 'state', and 'zip'
+    # 5. Return the location dict
     #
     # Hints:
     # - Use input() to get user responses
@@ -395,7 +421,7 @@ def collect_additional_info():
     # - .upper() for state codes to standardize (NC not nc)
     #
     # Example output format:
-    # location = {'city': 'Charlotte', 'state': 'NC'}
+    # location = {'city': 'Charlotte', 'state': 'NC', 'zip': '28202'}
     
     location = {}
     
@@ -445,11 +471,29 @@ def collect_additional_info():
             # fallback: store uppercase of raw input
             state = s.upper()
 
+    zip_attempts = 0
+    zip_raw = ''
+    zip_code = ''
+    while zip_attempts < 3:
+        zip_raw = input("What is your ZIP code? (4 or 5 digits, press Enter to skip) ").strip()
+        if not zip_raw:
+            break
+
+        digits_only = ''.join(ch for ch in zip_raw if ch.isdigit())
+        if len(digits_only) in (4, 5):
+            zip_code = digits_only
+            break
+
+        zip_attempts += 1
+        print("Thanks. Please enter a 4- or 5-digit ZIP code, or press Enter to skip.")
+
     location = {
         'city_raw': city_raw,
         'city': city,
         'state_raw': state_raw,
-        'state': state
+        'state': state,
+        'zip_raw': zip_raw,
+        'zip': zip_code
     }
 
     
@@ -529,8 +573,14 @@ def call_facility_matcher(classification, additional_info):
         # prefer normalized 'city'/'state', fall back to raw
         city = loc.get('city') or loc.get('city_raw')
         state = loc.get('state') or loc.get('state_raw')
+        zip_code = loc.get('zip') or loc.get('zip_raw')
+    else:
+        zip_code = None
 
-    print(f"Location: {city or 'N/A'}, {state or 'N/A'}")
+    location_line = f"Location: {city or 'N/A'}, {state or 'N/A'}"
+    if zip_code:
+        location_line += f" {zip_code}"
+    print(location_line)
     print(f"Insurance: {'Yes' if additional_info.get('insurance', {}).get('has_insurance') else 'No'}")
 
     scored_csv = root_dir / "Group3_dataset" / "all_facilities_scored.csv"
@@ -539,7 +589,13 @@ def call_facility_matcher(classification, additional_info):
         print(f"Using pre-scored data: {scored_csv.name}")
         try:
             # Use lightweight fast search to avoid loading heavy ML models
-            facilities = fast_search_scored_csv(str(scored_csv), city=city, state=state, top_n=5)
+            facilities = fast_search_scored_csv(
+                str(scored_csv),
+                city=city,
+                state=state,
+                zipcode=zip_code,
+                top_n=5
+            )
 
             print(f"✓ Found {len(facilities)} facilities (top {min(5, len(facilities))})")
 

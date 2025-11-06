@@ -127,6 +127,7 @@ python3 chatbot_pipeline.py
 ```
 What city are you in? Denver
 What state are you in? CO
+What is your ZIP code? (4 or 5 digits, press Enter to skip) 80204
 Do you have health insurance? (yes/no) yes
 If yes, what's your insurance provider? Medicaid
 Choose output view - (1) Simple (non-technical)  (2) JSON (technical) [default 1]: 1
