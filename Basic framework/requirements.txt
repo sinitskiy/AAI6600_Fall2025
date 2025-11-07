@@ -7,3 +7,4 @@ pathlib
 typing
 pytest>=7.0.0
 openai>=0.27.0
+google-generativeai>=0.3.0

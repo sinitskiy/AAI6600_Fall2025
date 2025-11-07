@@ -240,144 +240,132 @@ def format_facility_results(facilities, output_format='simple'):
 
     return "\n".join(lines).strip()
 
+
 # =====================================================
-# Mock Classifier (Temporary - Replace with LLM Later)
+# Mock Classifier (Commented Out, for Reference)
 # =====================================================
+# def mock_classify_conversation(conversation_history):
+#     """
+#     LLM-backed conversation handler.
+#     Behavior:
+#     - If OpenAI python package is available and OPENAI_API_KEY is set, use the Chat API
+#       to analyze the provided `conversation_history`, conduct up to a small number
+#       of follow-up questions (interactive via input()) to extract missing fields,
+#       and return a structured dictionary.
+#     - If OpenAI isn't available or API key is missing, fall back to a lightweight
+#       heuristic that summarizes user messages (keeps prior mock behavior).
+#     Returns:
+#         dict: must contain 'category', 'confidence', 'user_input'. May also include
+#               optional fields: 'symptoms', 'location' (dict), 'insurance' (dict).
+#     """
+#     # Gather existing user messages into a single text blob
+#     # user_messages = [msg.get('message', '') for msg in conversation_history if msg.get('role') == 'USER']
+#     # conversation_text = "\n".join(user_messages).strip()
+#     # Fallback heuristic: summarize user messages and return low-confidence classification
+#     # combined_input = conversation_text or ""
+#     # return {
+#     #     'category': 'Mental health',
+#     #     'confidence': 0.6,
+#     #     'user_input': combined_input[:100],
+#     #     'symptoms': combined_input,
+#     #     'location': {},
+#     #     'insurance': {}
+#     # }
 
-def mock_classify_conversation(conversation_history):
+# =====================================================
+# Gemini Classifier (Active)
+# =====================================================
+import json
+import requests
+def gemini_classify_conversation(conversation_history):
     """
-    LLM-backed conversation handler.
+    LLM-backed conversation handler using Gemini API.
+    Matches OpenAI function structure: gathers user messages, sends to Gemini, parses and normalizes output.
+    Returns dict with category, confidence, user_input, symptoms, location, insurance.
 
-    Behavior:
-    - If OpenAI python package is available and OPENAI_API_KEY is set, use the Chat API
-      to analyze the provided `conversation_history`, conduct up to a small number
-      of follow-up questions (interactive via input()) to extract missing fields,
-      and return a structured dictionary.
-    - If OpenAI isn't available or API key is missing, fall back to a lightweight
-      heuristic that summarizes user messages (keeps prior mock behavior).
-
-    Returns:
-        dict: must contain 'category', 'confidence', 'user_input'. May also include
-              optional fields: 'symptoms', 'location' (dict), 'insurance' (dict).
     """
-
-    # Gather existing user messages into a single text blob
+    # Gather user messages into a single text blob
     user_messages = [msg.get('message', '') for msg in conversation_history if msg.get('role') == 'USER']
     conversation_text = "\n".join(user_messages).strip()
 
-    # Try to use OpenAI ChatCompletion if available
+    # Load API key from config.json
     try:
-        import openai
-        OPENAI_KEY = os.getenv('OPENAI_API_KEY') or os.getenv('OPENAI_APIKEY')
-        if not OPENAI_KEY:
-            raise RuntimeError('OPENAI_API_KEY not found in environment')
-
-        openai.api_key = OPENAI_KEY
-
-        system_prompt = (
-            "You are a helpful clinical intake assistant. Conduct a natural, empathetic "
-            "conversation only to the extent needed to extract the following structured "
-            "information from the user: category (one short category label), confidence "
-            "(0-1 or 0-100), user_input (short summary), symptoms (brief), location {city, state}, "
-            "insurance {has_insurance: bool, provider: str or empty}. If information is missing, "
-            "ask one concise follow-up question. After you have the information, reply with ONLY a JSON object"
-            " (no additional text) containing these fields. Make confidence numeric.")
-
-        # Build chat history for the model: include prior conversation as user/system turns
-        messages = [
-            {'role': 'system', 'content': system_prompt},
-        ]
-
-        # Append conversation history preserving roles
-        for msg in conversation_history:
-            role = msg.get('role', 'USER')
-            content = msg.get('message', '')
-            # Map local roles to chat roles
-            chat_role = 'user' if role.upper() in ('USER', 'U') else 'assistant' if role.upper() in ('BOT', 'SYSTEM') else 'user'
-            messages.append({'role': chat_role, 'content': content})
-
-        # We'll allow a small interactive loop: up to 3 follow-ups to collect required fields
-        max_rounds = 3
-        for round_i in range(max_rounds):
-            # Choose model: prefer gpt-4 if available, else gpt-3.5-turbo
-            model = os.getenv('OPENAI_MODEL', 'gpt-4')
-            try:
-                resp = openai.ChatCompletion.create(model=model, messages=messages, temperature=0.2)
-            except Exception:
-                # fallback to cheaper model
-                resp = openai.ChatCompletion.create(model='gpt-3.5-turbo', messages=messages, temperature=0.2)
-
-            assistant_msg = resp['choices'][0]['message']['content'].strip()
-
-            # Try to extract JSON from assistant message
-            parsed = None
-            try:
-                parsed = json.loads(assistant_msg)
-            except Exception:
-                # try to find a JSON substring
-                import re
-                m = re.search(r"\{(?:.|\n)*\}", assistant_msg)
-                if m:
-                    try:
-                        parsed = json.loads(m.group(0))
-                    except Exception:
-                        parsed = None
-
-            # If parsed and contains required keys, return it
-            if isinstance(parsed, dict) and all(k in parsed for k in ('category', 'confidence', 'user_input')):
-                # Normalize location/insurance if present
-                return parsed
-
-            # If the assistant returned a follow-up question as text, present to user
-            # Heuristic: treat non-JSON as a follow-up question
-            follow_up = None
-            if not parsed:
-                follow_up = assistant_msg
-            else:
-                # parsed but missing fields -> ask assistant to generate single follow-up
-                follow_up = (parsed.get('follow_up_question') or
-                             parsed.get('clarifying_question') or
-                             "Could you tell me your city and state? (or type 'skip')")
-
-            # Ask user and append reply to messages
-            try:
-                reply = input(f"{follow_up}\n> ").strip()
-            except Exception:
-                # non-interactive environment: break and fallback
-                break
-
-            messages.append({'role': 'user', 'content': reply})
-
-        # If loop ends without structured full result, try one last analysis pass (no follow-ups)
-        final_resp = openai.ChatCompletion.create(
-            model='gpt-3.5-turbo',
-            messages=messages + [{'role': 'system', 'content': 'Now produce the requested JSON with the fields.'}],
-            temperature=0.0
-        )
-        final_text = final_resp['choices'][0]['message']['content'].strip()
-        try:
-            final_parsed = json.loads(final_text)
-            if isinstance(final_parsed, dict) and 'category' in final_parsed:
-                return final_parsed
-        except Exception:
-            pass
-
-        # If still no structured result, fall through to fallback below
-
+        import os
+        config_path = os.path.join(os.path.dirname(__file__), "config.json")
+        with open(config_path) as f:
+            config = json.load(f)
+        api_key = config.get("GEMINI_API_KEY")
     except Exception as e:
-        # Any failure to use the OpenAI path should not crash the pipeline.
-        print(f"LLM integration unavailable or failed: {e}")
+        raise RuntimeError(f"Could not read Gemini API key from config.json: {e}")
+    if not api_key:
+        raise ValueError("GEMINI_API_KEY not found in config.json")
 
-    # Fallback heuristic: summarize user messages and return low-confidence classification
-    combined_input = conversation_text or ""
-    return {
-        'category': 'Mental health',
-        'confidence': 0.6,
-        'user_input': combined_input[:100],
-        'symptoms': combined_input,
-        'location': {},
-        'insurance': {}
+    endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
+    prompt = (
+        "You are a clinical intake assistant. Your job is to extract the following fields from the user: "
+        "category (short label), confidence (0-1 or 0-100), user_input (short summary), symptoms (brief), location {city, state}, insurance {has_insurance: bool, provider: str or empty}. "
+        "If ANY required field is missing, ask a concise follow-up question for ONLY that missing field (e.g., if location is missing, ask for city and state; if insurance is missing, ask: 'Do you have health insurance?'). "
+        "If the user answers 'yes' to having insurance, you MUST immediately ask for the insurance provider (e.g., 'Who is your insurance provider?' or 'What kind of insurance do you have?') before proceeding. Never skip this step. You MUST always ask the user directly for insurance status if it is missing—never guess, infer, or default any value. Repeat this process until ALL required fields are present. When you have ALL fields, reply with ONLY a valid JSON object containing these fields, with NO extra text, NO Markdown, and NO explanation. Confidence must be numeric.\n\n"
+        f"User input: {conversation_text}"
+    )
+    headers = {"Content-Type": "application/json"}
+    payload = {
+        "contents": [
+            {
+                "role": "user",
+                "parts": [
+                    {"text": prompt}
+                ]
+            }
+        ]
     }
+    params = {"key": api_key}
+
+    try:
+        response = requests.post(endpoint, headers=headers, params=params, json=payload)
+        response.raise_for_status()
+        result = response.json()
+    except Exception as e:
+        print("Gemini API error response:")
+        print(e)
+        raise RuntimeError(f"Gemini API request failed: {e}")
+
+    # Print raw Gemini response for debugging
+    print("Gemini raw API response:")
+    print(json.dumps(result, indent=2))
+
+    # Parse Gemini response and normalize output
+    try:
+        text = result["candidates"][0]["content"]["parts"][0]["text"]
+        print(f"Gemini response text: {text}")
+        import re
+        # Try to extract JSON from anywhere in the response
+        match = re.search(r"\{[\s\S]*\}", text)
+        if match:
+            json_str = match.group(0)
+            output = json.loads(json_str)
+            # Normalize output fields for consistency
+            output.setdefault('category', 'Mental health')
+            output.setdefault('confidence', 0.6)
+            output.setdefault('user_input', conversation_text[:100])
+            output.setdefault('symptoms', '')
+            output.setdefault('location', {})
+            output.setdefault('insurance', {})
+            return output
+        else:
+            # No JSON found, return follow-up question and flag
+            return {
+                'needs_followup': True,
+                'followup_question': text.strip(),
+                'category': None,
+                'confidence': None,
+                'user_input': conversation_text[:100],
+                'symptoms': '',
+                'location': {},
+                'insurance': {}
+            }
+    except Exception as e:
+        raise RuntimeError(f"Gemini API response parsing error: {e}")
 
 
 # =====================================================
@@ -618,7 +606,7 @@ def call_facility_matcher(classification, additional_info):
     # If caller wants to run the full scorer, import it lazily so module import doesn't
     # immediately require heavy ML dependencies (sentence-transformers, etc.).
     try:
-        import facility_scorer
+        from integrated import facility_scorer
         # Note: the integration path to run the full scorer can be implemented here
         # (e.g., call facility_scorer.score_csv_file or similar). For now, we simply
         # inform the user and return None.
@@ -665,9 +653,61 @@ def run_pipeline():
     print("[Step 2] Classifying mental health needs...")
     from data_adapter import adapt_mock_output
 
-    raw_classification = mock_classify_conversation(mock_conversation)
-    classification = adapt_mock_output(raw_classification)
-    print(f"✓ Classification: {classification['category']} ({classification['confidence']:.0%} confidence)\n")
+    # LLM classification with follow-up loop: keep asking until all required info is present
+    from data_adapter import adapt_llm_output
+    conversation = mock_conversation.copy()
+    required_fields = ['category', 'confidence', 'user_input', 'symptoms', 'location', 'insurance']
+    def has_all_required_fields(classif):
+        if not classif:
+            return False
+        # Check top-level fields
+        for f in required_fields:
+            if f not in classif or classif[f] is None:
+                return False
+        # Check location subfields
+        loc = classif.get('location', {})
+        if not loc or not loc.get('city') or not loc.get('state'):
+            return False
+        # Check insurance subfields
+        ins = classif.get('insurance', {})
+        # Guarantee user is asked for insurance, not inferred/defaulted
+        if 'has_insurance' not in ins or ins['has_insurance'] is None:
+            return False
+        # If Gemini returns has_insurance as False but user was never asked, treat as missing
+        # (This is a heuristic: if conversation never included 'insurance', force Gemini to ask)
+        insurance_asked = any('insurance' in msg.get('message', '').lower() or 'health insurance' in msg.get('message', '').lower() for msg in conversation)
+        # If insurance info is present and valid, skip further insurance questions
+        if ins.get('has_insurance') is not None:
+            # If user has insurance, provider must be present (can be empty string)
+            if ins['has_insurance']:
+                if 'provider' in ins:
+                    return True
+            else:
+                return True
+        if not insurance_asked:
+            return False
+        return True
+
+    while True:
+        raw_classification = gemini_classify_conversation(conversation)
+        # Show Gemini's full response to the user
+        if not has_all_required_fields(raw_classification):
+            print("Gemini says:")
+            followup = raw_classification.get('followup_question') or "Please provide more information."
+            print(followup)
+            user_reply = input("Your answer: ").strip()
+            conversation.append({'role': 'USER', 'message': user_reply})
+        else:
+            # If insurance is present, has_insurance is True, but provider is empty, prompt for provider
+            insurance = raw_classification.get('insurance', {})
+            if insurance.get('has_insurance') and not insurance.get('provider'):
+                provider = input("Who is your insurance provider? (press Enter to skip) ").strip()
+                raw_classification['insurance']['provider'] = provider
+            print("Gemini says:")
+            print(json.dumps(raw_classification, indent=2))
+            classification = adapt_llm_output(raw_classification)
+            print(f"✓ Classification: {classification['category']} ({classification['confidence']:.0%} confidence)\n")
+            break
     
     # Step 3: Route using group2_router
     print("[Step 3] Routing to appropriate group...")
@@ -685,10 +725,45 @@ def run_pipeline():
             'classification': classification
         }
     
-    # Step 5: Group 3 handles - collect additional info
-    print("[Step 4] Collecting additional information for facility matching...")
-    additional_info = collect_additional_info()
-    print("✓ Information collected\n")
+    # Step 5: Group 3 handles - collect additional info ONLY if Gemini did not provide all required fields
+    location = classification.get('location', {}) or {}
+    insurance = classification.get('insurance', {}) or {}
+    required_fields = [location.get('city'), location.get('state'), insurance.get('has_insurance')]
+    # zip is optional, provider is optional
+    missing_required = any(f is None or f == '' or f == 'null' for f in required_fields)
+    if missing_required:
+        print("[Step 4] Collecting additional information for facility matching...")
+        def prompt_if_missing(field, prompt_text, validate=None):
+            val = location.get(field) if field in ['city', 'state', 'zip'] else insurance.get(field)
+            if field == 'zip' and val == '':
+                return
+            while val is None or (field == 'zip' and val == ''):
+                val = input(prompt_text).strip()
+                if field == 'zip' and val == '':
+                    break
+                if validate and not validate(val):
+                    print("Invalid input. Please try again.")
+                    val = None
+            if field in ['city', 'state', 'zip']:
+                location[field] = val
+            else:
+                insurance[field] = val
+        if not location.get('city') or location.get('city') == 'null':
+            prompt_if_missing('city', 'What city are you in? ')
+        if not location.get('state') or location.get('state') == 'null':
+            prompt_if_missing('state', 'What state are you in? (2-letter code or full name, e.g., NC or North Carolina) ')
+        if 'zip' not in location or location.get('zip') is None:
+            prompt_if_missing('zip', 'What is your ZIP code? (4 or 5 digits, press Enter to skip) ', lambda z: z == '' or (z.isdigit() and 4 <= len(z) <= 5))
+        if 'has_insurance' not in insurance or insurance.get('has_insurance') is None:
+            prompt_if_missing('has_insurance', 'Do you have health insurance? (yes/no) ', lambda x: x.lower() in ['yes', 'no'])
+        if isinstance(insurance.get('has_insurance'), str):
+            insurance['has_insurance'] = insurance['has_insurance'].lower() == 'yes'
+        if insurance.get('has_insurance') and (not insurance.get('provider')):
+            prompt_if_missing('provider', 'Who is your insurance provider? (press Enter to skip) ')
+        additional_info = {'location': location, 'insurance': insurance}
+        print("✓ Information collected\n")
+    else:
+        additional_info = {'location': location, 'insurance': insurance}
 
     # Ask user preferred output view (simple vs json). Default to simple.
     try:
