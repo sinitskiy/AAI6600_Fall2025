@@ -26,7 +26,6 @@ This guide will help you set up the Google Gemini API integration for the Mental
 
 4. **Copy your API Key**
    - **Important**: Copy this key immediately and store it securely
-   - The key will look like: `AIzaSyC2Bk9H4e5vWjl6qW8ELpcMG808-zze2po`
 
 ### Option B: Using Google Cloud Console (Advanced)
 
