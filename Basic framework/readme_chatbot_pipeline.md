@@ -1,13 +1,35 @@
 # Mental Health Chatbot Pipeline
 
-**AAI6600 Fall 2025 - Group 3**  
-**Authors:** Subgroup B (Michael Zimmerman, Radhika Nori)
+**AAI6600 Fall 2025**  
+**Authors:** Janet Garcia, Sharan Sandhu, Sneha Paul, Michael Zimmerman
+
+## 🔗 Dependencies (short)
+
+This project uses Python packages for data processing (e.g. pandas, numpy) and optional machine-learning/scoring packages (e.g. sentence-transformers, scikit-learn). See `DEPENDENCIES.md` for full details.
+
+
+## Google Gemini API Integration  (short)
+Quick Gemini setup (optional): follow `SETUP_GEMINI.md` for step-by-step instructions to configure Google Gemini (API key and config file).
 
 ---
 
 ## 📋 Project Overview
 
 A comprehensive mental health care facility routing system that provides end-to-end workflow from user conversation to facility recommendations. The system classifies mental health needs, routes to appropriate care groups, and matches users with affordable mental health facilities based on location and insurance status.
+
+---
+
+## 🔔 Recent updates (since Nov 3, 2025)
+
+Summary of notable changes added in the most recent development cycle:
+
+- Optional OpenAI LLM integration in `chatbot_pipeline.py` (controlled by environment variables such as `OPENAI_API_KEY` and `OPENAI_MODEL`). The pipeline falls back to a heuristic when the LLM is not available.
+- Optimized CSV loading and safer filtering in the fast-search path (selective columns, dtype hints, low_memory, and np-aware handling) for lower memory usage and faster responses.
+- `data_adapter.py` extended to preserve optional structured fields returned by an LLM (for example: `symptoms`, `location`, and `insurance`) so downstream components can consume them.
+- Added a small smoke test `_smoke_test.py` to exercise the classification path quickly.
+- `requirements.txt` updated to include `openai` (optional dependency for the LLM path).
+- Repository cleanup: two large ZIP files were removed from history (backup branches were created on the remote first), the accidental space in `SAMHSA_cleaned .csv` was fixed, and `Basic framework_updated/` was untracked and added to `.gitignore`.
+- A review branch `update-from-Basic_framework_3-<timestamp>` was created and pushed so these updates can be reviewed in a PR before merging to `main`.
 
 ---
 
@@ -466,7 +488,6 @@ I couldn't recognize that state. Please enter 2-letter code or full state name
 
 ### Subgroup B: Pipeline Integration & Testing
 - Michael Zimmerman (Group Leader)
-- Radhika Nori
 
 **Responsibilities:**
 - Pipeline architecture
@@ -506,6 +527,6 @@ Academic project for AAI6600 Fall 2025. All rights reserved.
 
 ---
 
-**Last Updated:** November 3, 2025  
+**Last Updated:** November 7, 2025  
 **Version:** 1.0  
 **Status:** Production Ready for Demo
