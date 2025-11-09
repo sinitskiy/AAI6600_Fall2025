@@ -354,6 +354,66 @@ def detect_crisis_hybrid(user_message):
     }
 
 
+def display_emergency_resources():
+    """
+    Display comprehensive emergency mental health resources and hotlines.
+    Always available 24/7 for users in crisis or needing immediate support.
+    
+    Returns:
+        str: Formatted emergency resources with contact information
+    """
+    resources = """
+╔════════════════════════════════════════════════════════════════════╗
+║                  🆘 EMERGENCY MENTAL HEALTH RESOURCES              ║
+╚════════════════════════════════════════════════════════════════════╝
+
+If you are in immediate danger or having thoughts of self-harm:
+
+📞 **National Suicide Prevention Lifeline**
+   Call or Text: 988
+   Available: 24/7 - Free and Confidential
+   Website: 988lifeline.org
+
+💬 **Crisis Text Line**
+   Text: HOME to 741741
+   Available: 24/7 - Free Crisis Counseling
+   Website: crisistextline.org
+
+🚨 **Emergency Services**
+   Call: 911
+   For immediate emergency assistance
+
+🏥 **SAMHSA National Helpline**
+   Call: 1-800-662-HELP (4357)
+   Available: 24/7 - Free, Confidential
+   Treatment referral and information service
+   Website: samhsa.gov/find-help/national-helpline
+
+🌐 **National Alliance on Mental Illness (NAMI)**
+   Call: 1-800-950-NAMI (6264)
+   Text: "NAMI" to 741741
+   Available: Monday-Friday, 10am-10pm ET
+   Website: nami.org
+
+🌍 **The Trevor Project** (LGBTQ+ Youth)
+   Call: 1-866-488-7386
+   Text: START to 678-678
+   Available: 24/7
+   Website: thetrevorproject.org
+
+📱 **Veterans Crisis Line**
+   Call: 988 (Press 1)
+   Text: 838255
+   Available: 24/7 - Confidential support for veterans
+   Website: veteranscrisisline.net
+
+═══════════════════════════════════════════════════════════════════════
+Remember: You are not alone. Help is available right now.
+═══════════════════════════════════════════════════════════════════════
+"""
+    return resources
+
+
 # =====================================================
 # State Mapping and Location Parsing
 # =====================================================
@@ -946,19 +1006,16 @@ def harbor_respond_with_empathy(user_name, user_concern, symptoms, category):
     method = crisis_result['method']
     
     if is_crisis:
-        print("\n" + "╔" + "═"*68 + "╗")
-        print("║" + " 🆘 IMMEDIATE CRISIS SUPPORT ".center(68) + "║")
-        print("╚" + "═"*68 + "╝")
-        print()
+        # Display comprehensive emergency resources immediately
+        print("\n" + display_emergency_resources())
+        
         print(f"🚢 Harbor: {user_name}, I'm really glad you reached out to me.")
         print("          What you're feeling is serious, and I want you to know")
-        print("          you're not alone. You deserve immediate support.\n")
-        print("   📞 Call 988 - Suicide & Crisis Lifeline (24/7)")
-        print("   💬 Text 'HELLO' to 741741 - Crisis Text Line")
-        print("   🚨 Call 911 if you're in immediate danger\n")
-        print(f"🚢 Harbor: I'm also here to help you find ongoing care and support")
+        print("          you're not alone. Please use the resources above for")
+        print("          immediate support.\n")
+        print(f"          I'm also here to help you find ongoing care and support")
         print(f"          near you. Let me ask a few questions so I can connect")
-        print(f"          you with the right resources.\n")
+        print(f"          you with the right local resources.\n")
         print("─"*70 + "\n")
         return {
             'is_crisis': True,
@@ -1525,7 +1582,9 @@ def run_pipeline():
     
     # Step 4: Ask for missing information using hardcoded prompts
     if not is_crisis:
-        print("📋 Getting details to find the best facilities for you...\n")
+        print("\n" + "┌" + "─"*68 + "┐")
+        print("│" + " 📋 Step 2: Getting Location & Insurance Details ".center(68) + "│")
+        print("└" + "─"*68 + "┘\n")
     
     # Check turn limit
     if turn_count >= max_turns:
@@ -1590,7 +1649,9 @@ def run_pipeline():
         }
     }
     
-    print("\n" + "─"*70)
+    print("\n" + "┌" + "─"*68 + "┐")
+    print("│" + " 📍 Information Collected ".center(68) + "│")
+    print("└" + "─"*68 + "┘")
     print(f"✓ Location: {city}, {state}")
     print(f"✓ Insurance: {'Yes (' + insurance_type + ')' if insurance_status == 'yes' and insurance_type else insurance_status or 'Not specified'}")
     print("─"*70)
@@ -1603,9 +1664,10 @@ def run_pipeline():
         print(f"          to support you in {city}...\n")
     
     # Step 5: Route using group2_router
-    print("─"*70)
-    print("⚙️  Routing to appropriate services...")
-    print("─"*70 + "\n")
+    print("\n" + "┌" + "─"*68 + "┐")
+    print("│" + " ⚙️  Step 3: Routing to Appropriate Services ".center(68) + "│")
+    print("└" + "─"*68 + "┘\n")
+    
     from data_adapter import adapt_llm_output
     normalized_classification = adapt_llm_output(classification)
     
@@ -1644,9 +1706,10 @@ def run_pipeline():
     additional_info['output_format'] = 'both'  # Signal to show both formats
     
     # Step 8: Match facilities
-    print("─"*70)
-    print("🔍 Searching for facilities...")
-    print("─"*70 + "\n")
+    print("\n" + "┌" + "─"*68 + "┐")
+    print("│" + " 🔍 Step 4: Searching for Matching Facilities ".center(68) + "│")
+    print("└" + "─"*68 + "┘\n")
+    
     facilities = call_facility_matcher(normalized_classification, additional_info)
     
     # Step 9: Display results
@@ -1657,10 +1720,41 @@ def run_pipeline():
     if not facilities:
         print("\nNote: Facility matching is still being refined.")
     
+    # Enhanced thank you message based on category
     print("\n" + "─"*70)
-    print(f"🚢 Harbor: {user_name}, I hope this helps you find the support you need!")
-    print("          Take care, and remember: reaching out is a sign of strength.")
+    print(f"🚢 Harbor: {user_name}, thank you for trusting me with this.")
+    
+    # Personalized encouragement based on category
+    category_lower = category.lower() if category else ""
+    if 'anxiety' in category_lower:
+        print("          Managing anxiety takes courage, and you've taken an important")
+        print("          first step today. These facilities can provide the support")
+        print("          you deserve.")
+    elif 'depression' in category_lower or 'mood' in category_lower:
+        print("          Seeking help for depression is a sign of strength, not weakness.")
+        print("          These providers understand what you're going through and can")
+        print("          help you find your way forward.")
+    elif 'substance' in category_lower or 'addiction' in category_lower:
+        print("          Recovery is possible, and you don't have to do this alone.")
+        print("          These facilities specialize in supporting people on their")
+        print("          journey to wellness.")
+    else:
+        print("          Taking this step to find support shows real strength.")
+        print("          These providers are here to help you on your journey.")
+    
+    print("\n          💙 Remember: Healing isn't linear, and it's okay to ask for help.")
+    print("          📞 If you need to talk to someone right away, the resources")
+    print("          below are available 24/7.")
     print("─"*70)
+    
+    # Display emergency resources reminder
+    print("\n" + "═"*70)
+    print("  📋 REMEMBER: 24/7 CRISIS SUPPORT AVAILABLE".center(70))
+    print("═"*70)
+    print("📞 Call/Text 988 (Suicide & Crisis Lifeline)")
+    print("💬 Text HOME to 741741 (Crisis Text Line)")
+    print("🏥 Call 1-800-662-4357 (SAMHSA National Helpline)")
+    print("═"*70 + "\n")
     
     return {
         'status': 'success',
