@@ -49,6 +49,86 @@ STATE_MAPPING = {
 }
 
 
+def parse_location_input(location_string):
+    """
+    Parse a location string that may contain city and/or state in various formats.
+    
+    Handles formats like:
+    - "Charlotte North Carolina"
+    - "Charlotte, NC"
+    - "charlotte nc"
+    - "New York, NY"
+    - "San Francisco California"
+    
+    Args:
+        location_string: User input string containing city and/or state
+    
+    Returns:
+        tuple: (city, state_code) where state_code is 2-letter abbreviation or None
+    """
+    if not location_string:
+        return None, None
+    
+    # Normalize input
+    input_lower = location_string.lower().strip()
+    original_input = location_string.strip()
+    
+    # First, check for explicit state abbreviations (most reliable)
+    # Split by common delimiters and check last token(s)
+    tokens = input_lower.replace(',', ' ').split()
+    found_state = None
+    remaining_text = input_lower
+    
+    if tokens:
+        # Check if last token is a 2-letter state abbreviation
+        last_token = tokens[-1].upper()
+        if len(last_token) == 2 and last_token.isalpha():
+            # Check if it's a valid state code
+            if last_token in STATE_MAPPING.values():
+                found_state = last_token
+                # Remove the abbreviation from remaining text
+                remaining_text = ' '.join(tokens[:-1]).strip()
+    
+    # If no abbreviation found, try to find full state names
+    # Check multi-word states first (longest match first to avoid partial matches)
+    if not found_state:
+        sorted_states = sorted(STATE_MAPPING.items(), key=lambda x: len(x[0]), reverse=True)
+        
+        for full_name, abbrev in sorted_states:
+            # For states that could be city names (like "New York"), 
+            # only match if it appears at the end of the string
+            if full_name in ['new york', 'washington']:
+                # Check if state name appears at the end (after city)
+                if input_lower.endswith(full_name) or input_lower.endswith(f', {full_name}'):
+                    found_state = abbrev
+                    # Remove the state from end
+                    remaining_text = input_lower.replace(full_name, '').strip()
+                    break
+            else:
+                # For other states, match anywhere
+                if full_name in input_lower:
+                    found_state = abbrev
+                    # Remove the state from input to extract city
+                    remaining_text = input_lower.replace(full_name, '').strip()
+                    break
+    
+    # Clean up city name
+    city = remaining_text.replace(',', '').strip()
+    
+    # Capitalize city name properly
+    if city:
+        # Handle special cases like DC, NYC
+        if city.isupper() and len(city) <= 3:
+            city = city.upper()
+        else:
+            # Title case each word
+            city = ' '.join(word.capitalize() for word in city.split())
+    else:
+        city = None
+    
+    return city, found_state
+
+
 def fast_search_scored_csv(scored_csv_path, city=None, state=None, zipcode=None, top_n=5):
     """
     Lightweight search over a pre-scored CSV file.
@@ -115,7 +195,9 @@ def fast_search_scored_csv(scored_csv_path, city=None, state=None, zipcode=None,
 
         if city:
             try:
-                city_mask = df['city'].str.contains(city, case=False, na=False)
+                # Case-insensitive exact match after normalization
+                city_normalized = city.lower().strip()
+                city_mask = df['city'].str.lower().str.strip() == city_normalized
                 df = df[city_mask]
             except Exception as e:
                 print(f"Warning: City filtering failed: {e}")
@@ -416,48 +498,51 @@ def collect_additional_info():
     # YOUR CODE HERE (5-10 lines)
     # Start with: city = input("What city are you in? ").strip()
     
-    # Collect and normalize city. We apply a small heuristic:
-    # - If the user typed an all-uppercase short token (e.g., 'DC' or 'NYC'), keep it.
-    # - Otherwise use title-casing for consistency (e.g., 'new york' -> 'New York').
-    city_raw = input("What city are you in? ").strip()
-    if city_raw and city_raw.isupper() and len(city_raw) <= 3:
-        city = city_raw
-    else:
-        # Basic heuristic: title-case words but preserve existing all-caps words
-        parts = []
-        for w in city_raw.split():
-            parts.append(w if w.isupper() else w.capitalize())
-        city = " ".join(parts).strip()
+    # Collect location with smart parsing that handles "Charlotte North Carolina" format
+    city_raw = input("What city and state are you in? (e.g., Charlotte, NC or Charlotte North Carolina) ").strip()
+    
+    # Try to parse city and state from the input
+    city, state = parse_location_input(city_raw)
+    
+    # If we didn't get a state, ask for it explicitly
+    if not state:
+        state_raw = input("What state are you in? (2-letter code or full name, e.g., NC or North Carolina) ").strip()
+        
+        # Try to parse the state input
+        attempts = 0
+        while attempts < 2 and not state:
+            if not state_raw:
+                # empty input -> keep empty and break
+                break
 
-    # Accept either 2-letter codes or full state names (case-insensitive).
-    # Normalize to 2-letter uppercase codes when mapping is available.
-    state_raw = input("What state are you in? (2-letter code or full name, e.g., NC or North Carolina) ").strip()
+            # Check if it's a 2-letter code
+            if len(state_raw) == 2 and state_raw.isalpha():
+                state = state_raw.upper()
+                break
 
-    # Allow one re-prompt if the state isn't recognized (better UX).
-    attempts = 0
-    state = ''
-    while attempts < 2:
-        if not state_raw:
-            # empty input -> keep empty and break
-            break
+            # Check if it's a full state name
+            mapped = STATE_MAPPING.get(state_raw.lower())
+            if mapped:
+                state = mapped
+                break
 
-        s = state_raw.strip()
-        if len(s) == 2 and s.isalpha():
-            state = s.upper()
-            break
-
-        mapped = STATE_MAPPING.get(s.lower())
-        if mapped:
-            state = mapped
-            break
-
-        # Not recognized: if first attempt, prompt again; otherwise accept uppercase fallback
-        attempts += 1
-        if attempts < 2:
-            state_raw = input("I couldn't recognize that state. Please enter 2-letter code or full state name (or press Enter to skip): ").strip()
-        else:
-            # fallback: store uppercase of raw input
-            state = s.upper()
+            # Not recognized: if first attempt, prompt again; otherwise accept uppercase fallback
+            attempts += 1
+            if attempts < 2:
+                state_raw = input("I couldn't recognize that state. Please enter 2-letter code or full state name (or press Enter to skip): ").strip()
+            else:
+                # fallback: store uppercase of raw input
+                state = state_raw.upper() if state_raw else ''
+    
+    # If we didn't get a city from parsing, ask for it
+    if not city:
+        city_input = input("What city are you in? ").strip()
+        if city_input:
+            # Capitalize properly
+            if city_input.isupper() and len(city_input) <= 3:
+                city = city_input
+            else:
+                city = ' '.join(word.capitalize() for word in city_input.split())
 
     zip_attempts = 0
     zip_raw = ''
@@ -728,6 +813,18 @@ def run_pipeline():
     # Step 5: Group 3 handles - collect additional info ONLY if Gemini did not provide all required fields
     location = classification.get('location', {}) or {}
     insurance = classification.get('insurance', {}) or {}
+    
+    # Normalize location data from Gemini (city capitalization + state abbreviation)
+    if location.get('city') or location.get('state'):
+        raw_city = location.get('city', '')
+        raw_state = location.get('state', '')
+        # Parse and normalize using our helper
+        parsed_city, parsed_state = parse_location_input(f"{raw_city} {raw_state}")
+        if parsed_city:
+            location['city'] = parsed_city
+        if parsed_state:
+            location['state'] = parsed_state
+    
     required_fields = [location.get('city'), location.get('state'), insurance.get('has_insurance')]
     # zip is optional, provider is optional
     missing_required = any(f is None or f == '' or f == 'null' for f in required_fields)
