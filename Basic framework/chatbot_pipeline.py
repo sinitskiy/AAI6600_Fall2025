@@ -383,7 +383,9 @@ If you are in immediate danger or having thoughts of self-harm:
    Call: 911
    For immediate emergency assistance
 
-🏥 **SAMHSA National Helpline**
+═══════════════════════════════════════════════════════════════════════
+
+🏥 **SAMHSA National Helpline** (Substance Abuse & Mental Health)
    Call: 1-800-662-HELP (4357)
    Available: 24/7 - Free, Confidential
    Treatment referral and information service
@@ -393,9 +395,14 @@ If you are in immediate danger or having thoughts of self-harm:
    Call: 1-800-950-NAMI (6264)
    Text: "NAMI" to 741741
    Available: Monday-Friday, 10am-10pm ET
-   Website: nami.org
+   Website: nami.org/help
 
-🌍 **The Trevor Project** (LGBTQ+ Youth)
+💙 **The Adam Project** (Free Mental Health Provider Directory)
+   Website: www.TheAdamProject.org
+   1,300+ free mental health providers across America
+   Search by location, specialty, and insurance
+
+🌍 **The Trevor Project** (LGBTQ+ Youth Crisis Support)
    Call: 1-866-488-7386
    Text: START to 678-678
    Available: 24/7
@@ -407,11 +414,92 @@ If you are in immediate danger or having thoughts of self-harm:
    Available: 24/7 - Confidential support for veterans
    Website: veteranscrisisline.net
 
+🧠 **National Institute of Mental Health (NIMH)**
+   Website: nimh.nih.gov
+   Information, research, and resources on mental health conditions
+
+🆘 **Disaster Distress Helpline**
+   Call: 1-800-985-5990
+   Text: "TalkWithUs" to 66746
+   Available: 24/7 - Crisis counseling for disaster-related distress
+
+👤 **National Domestic Violence Hotline**
+   Call: 1-800-799-7233
+   Text: START to 88788
+   Available: 24/7
+   Website: thehotline.org
+
+🌈 **Trans Lifeline**
+   Call: 877-565-8860 (US) or 877-330-6366 (Canada)
+   Available: 10am-4am ET
+   Peer support by and for transgender people
+
+📚 **MentalHealth.gov** (Government Resource Portal)
+   Website: mentalhealth.gov
+   Comprehensive directory of mental health services and information
+
 ═══════════════════════════════════════════════════════════════════════
 Remember: You are not alone. Help is available right now.
 ═══════════════════════════════════════════════════════════════════════
 """
     return resources
+
+
+def display_free_resource_info():
+    """
+    Display information about free and low-cost mental health resources.
+    
+    Helpful for users who may not have insurance or are looking for affordable options.
+    Highlights TheAdamProject.org as a comprehensive free provider directory.
+    
+    Returns:
+        str: Formatted information about free mental health resources
+    """
+    info = """
+┌────────────────────────────────────────────────────────────────────┐
+│                  💙 FREE & AFFORDABLE MENTAL HEALTH CARE           │
+└────────────────────────────────────────────────────────────────────┘
+
+If cost is a concern, there are many free and low-cost options available:
+
+🌟 **The Adam Project** - Comprehensive Free Provider Directory
+   Website: www.TheAdamProject.org
+   • 1,300+ free mental health providers across all 50 states
+   • Search by location, specialty, and type of care needed
+   • Includes therapists, counselors, psychiatrists, and support groups
+   • No insurance required - completely free services
+
+📞 **SAMHSA Treatment Locator**
+   Website: findtreatment.gov
+   Call: 1-800-662-4357
+   • Find local treatment facilities and support groups
+   • Many offer sliding scale fees based on income
+
+🏥 **Community Health Centers**
+   Website: findahealthcenter.hrsa.gov
+   • Federally qualified health centers provide mental health services
+   • Sliding scale fees - no one turned away for inability to pay
+
+🎓 **University Training Clinics**
+   • Many universities offer low-cost therapy through training programs
+   • Supervised by licensed professionals
+   • Search: "[your city] university counseling training clinic"
+
+🌐 **Online & Telehealth Resources**
+   • BetterHelp Financial Aid: betterhelp.com/get-started
+   • Open Path Collective: openpathcollective.org ($30-$80 per session)
+   • 7 Cups: 7cups.com (free emotional support)
+
+💬 **Support Groups** (Often Free)
+   • NAMI Support Groups: nami.org/support
+   • SMART Recovery: smartrecovery.org
+   • Mental Health America: mhanational.org/find-support-groups
+
+────────────────────────────────────────────────────────────────────────
+Remember: Financial concerns should never prevent you from getting help.
+────────────────────────────────────────────────────────────────────────
+"""
+    return info
 
 
 # =====================================================
@@ -1625,6 +1713,14 @@ def run_pipeline():
         insurance_status = 'yes' if insurance_input.startswith('y') else 'no'
         conversation_history.append({'role': 'USER', 'message': insurance_input})
         turn_count += 1
+        
+        # If no insurance, show free resource information
+        if insurance_status == 'no':
+            print("\n🚢 Harbor: That's okay - there are many free and low-cost options available.")
+            print("          Let me share some resources that might help:\n")
+            print(display_free_resource_info())
+            print("🚢 Harbor: I'll also search for facilities that offer sliding scale fees")
+            print("          or accept patients without insurance.\n")
     
     # Insurance type (if they have insurance)
     if insurance_status == 'yes' and not insurance_type and turn_count < max_turns:
@@ -1749,11 +1845,12 @@ def run_pipeline():
     
     # Display emergency resources reminder
     print("\n" + "═"*70)
-    print("  📋 REMEMBER: 24/7 CRISIS SUPPORT AVAILABLE".center(70))
+    print("  📋 ADDITIONAL RESOURCES & 24/7 CRISIS SUPPORT".center(70))
     print("═"*70)
     print("📞 Call/Text 988 (Suicide & Crisis Lifeline)")
     print("💬 Text HOME to 741741 (Crisis Text Line)")
     print("🏥 Call 1-800-662-4357 (SAMHSA National Helpline)")
+    print("💙 Visit www.TheAdamProject.org (1,300+ free providers nationwide)")
     print("═"*70 + "\n")
     
     return {
