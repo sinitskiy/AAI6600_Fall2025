@@ -863,6 +863,311 @@ Here's what we recommend for your continued care:
 
 
 # =====================================================
+# Hybrid Resource Display Functions (Phase 2)
+# =====================================================
+
+def display_resources_by_category(category_num):
+    """
+    Display specific resource category based on user selection.
+    
+    Args:
+        category_num: Integer representing category (1-5)
+    
+    Returns:
+        bool: True if valid category displayed, False otherwise
+    """
+    if category_num == 1:
+        # Mental Health Websites & Information
+        print("""
+┌────────────────────────────────────────────────────────────────────┐
+│         📚 MENTAL HEALTH WEBSITES & EDUCATIONAL RESOURCES          │
+└────────────────────────────────────────────────────────────────────┘
+
+🔹 **MentalHealth.gov** - Government Resource Portal
+   Website: www.mentalhealth.gov
+   • Comprehensive mental health information
+   • Treatment locator and helplines
+   • Resources for families and friends
+
+🔹 **National Institute of Mental Health (NIMH)**
+   Website: www.nimh.nih.gov
+   • Research-based mental health information
+   • Educational materials on all mental health conditions
+   • Clinical trials information
+
+🔹 **National Alliance on Mental Illness (NAMI)**
+   Website: www.nami.org
+   • Mental health education and advocacy
+   • Find Your Local NAMI for support
+   • Free educational programs and resources
+
+🔹 **Mental Health America (MHA)**
+   Website: www.mhanational.org
+   • Free mental health screening tools
+   • Educational resources and advocacy
+   • Community-based resources
+
+🔹 **Psych Central** - Mental Health Information
+   Website: www.psychcentral.com
+   • Articles and resources on mental health conditions
+   • Quizzes and self-assessments
+   • Expert-reviewed content
+────────────────────────────────────────────────────────────────────────
+""")
+        return True
+    
+    elif category_num == 2:
+        # Online Therapy & Telehealth
+        print("""
+┌────────────────────────────────────────────────────────────────────┐
+│          💻 ONLINE THERAPY & TELEHEALTH PLATFORMS                  │
+└────────────────────────────────────────────────────────────────────┘
+
+🔹 **BetterHelp** - Online Therapy Platform
+   Website: www.betterhelp.com
+   • Licensed therapists via video, phone, or messaging
+   • Financial aid available for those who qualify
+   • Get matched with a therapist in 24-48 hours
+
+🔹 **Talkspace** - Therapy & Psychiatry Online
+   Website: www.talkspace.com
+   • Therapy and medication management
+   • Insurance accepted for many plans
+   • Text, video, or audio messaging
+
+🔹 **MDLive** - Telehealth Services
+   Website: www.mdlive.com/behavioral-health
+   • Psychiatry and therapy services
+   • Often covered by insurance
+   • Same-day appointments available
+
+🔹 **Cerebral** - Online Mental Health Care
+   Website: www.cerebral.com
+   • Therapy and medication management
+   • Prescriptions delivered to your door
+   • Accepts insurance
+────────────────────────────────────────────────────────────────────────
+""")
+        return True
+    
+    elif category_num == 3:
+        # Mental Health Apps
+        print("""
+┌────────────────────────────────────────────────────────────────────┐
+│             📱 FREE MENTAL HEALTH APPS & SELF-HELP TOOLS           │
+└────────────────────────────────────────────────────────────────────┘
+
+🔹 **Headspace** - Meditation & Mindfulness
+   Website: www.headspace.com
+   • Guided meditation and mindfulness exercises
+   • Sleep sounds and focus music
+   • Stress and anxiety management tools
+
+🔹 **Calm** - Sleep & Meditation App
+   Website: www.calm.com
+   • Sleep stories and relaxation techniques
+   • Breathing exercises and guided meditations
+   • Anxiety and stress relief programs
+
+🔹 **Sanvello** - Mental Health Support App
+   Website: www.sanvello.com
+   • Mood tracking and cognitive behavioral therapy (CBT)
+   • Peer support community
+   • Premium features with insurance coverage
+
+🔹 **MoodKit** - CBT-Based Mood Improvement
+   Website: www.thriveport.com/products/moodkit
+   • Evidence-based CBT techniques
+   • Mood tracking and thought checker
+   • Activities to improve mental health
+
+🔹 **Woebot** - AI Mental Health Ally
+   Website: www.woebothealth.com
+   • Free AI-powered mental health support
+   • Evidence-based CBT conversations
+   • Available 24/7
+────────────────────────────────────────────────────────────────────────
+""")
+        return True
+    
+    elif category_num == 4:
+        # Support Groups & Communities
+        print("""
+┌────────────────────────────────────────────────────────────────────┐
+│           👥 ONLINE SUPPORT GROUPS & COMMUNITIES                    │
+└────────────────────────────────────────────────────────────────────┘
+
+🔹 **7 Cups** - Free Emotional Support
+   Website: www.7cups.com
+   • Free, anonymous online chat support
+   • Trained volunteer listeners available 24/7
+   • Professional therapy available for a fee
+
+🔹 **NAMI Connection** - Peer Support Groups
+   Website: www.nami.org/Support-Education/Support-Groups/NAMI-Connection
+   • Free peer-led support groups (many virtual)
+   • Led by people with lived mental health experience
+   • Weekly meetings, no registration required
+
+🔹 **SMART Recovery** - Addiction Support
+   Website: www.smartrecovery.org
+   • Free online meetings for addiction recovery
+   • Science-based, self-empowering approach
+   • Multiple meetings daily
+
+🔹 **Depression and Bipolar Support Alliance (DBSA)**
+   Website: www.dbsalliance.org/support/chapters-and-support-groups
+   • Peer-led support groups (in-person and virtual)
+   • Free and confidential
+   • Recovery-focused community
+
+🔹 **Crisis Text Line** - Text HOME to 741741
+   Website: www.crisistextline.org
+   • Free 24/7 crisis support via text
+   • Trained crisis counselors
+   • All issues welcome, not just suicide
+────────────────────────────────────────────────────────────────────────
+""")
+        return True
+    
+    elif category_num == 5:
+        # Crisis Chat & All Resources
+        print("""
+┌────────────────────────────────────────────────────────────────────┐
+│              💬 24/7 CRISIS CHAT & ALL RESOURCES                    │
+└────────────────────────────────────────────────────────────────────┘
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💬 CRISIS CHAT & TEXT SUPPORT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔹 **988 Lifeline Chat** - Suicide Prevention Chat
+   Website: www.988lifeline.org/chat
+   • Free, confidential crisis chat
+   • Available 24/7
+
+🔹 **Crisis Text Line** - Text HOME to 741741
+   Website: www.crisistextline.org
+   • Free 24/7 crisis support via text
+
+🔹 **IMAlive** - Online Crisis Chat
+   Website: www.imalive.org
+   • Free online crisis chat service
+
+🔹 **Veterans Crisis Line Chat**
+   Website: www.veteranscrisisline.net/get-help-now/chat
+   • 24/7 confidential chat for veterans
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+For complete resources, I've also shown you:
+• Mental health websites and educational resources
+• Online therapy and telehealth platforms  
+• Free mental health apps and self-help tools
+• Support groups and communities
+
+────────────────────────────────────────────────────────────────────────
+""")
+        # Display all resources
+        display_resources_by_category(1)
+        display_resources_by_category(2)
+        display_resources_by_category(3)
+        display_resources_by_category(4)
+        return True
+    
+    else:
+        return False
+
+
+def show_resource_menu(user_name):
+    """
+    Interactive menu for users to select which resources they want to see.
+    Only shown for non-crisis cases.
+    
+    Args:
+        user_name: User's name for personalization
+    """
+    print(f"\n🚢 Harbor: {user_name}, I have additional resources that might help you.")
+    print("          Would you like to see any of these?\n")
+    print("┌────────────────────────────────────────────────────────────────────┐")
+    print("│                   📋 ADDITIONAL RESOURCES (Optional)                │")
+    print("└────────────────────────────────────────────────────────────────────┘")
+    print("\n  Type the number for what you'd like to see:")
+    print("    1. Mental health websites & educational resources")
+    print("    2. Online therapy & telehealth platforms")
+    print("    3. Free mental health apps (Headspace, Calm, etc.)")
+    print("    4. Support groups & online communities")
+    print("    5. All of the above")
+    print("    0. No thanks, I have what I need\n")
+    
+    shown_categories = set()
+    
+    while True:
+        choice = input("🚢 Harbor: What would you like to see? (number or 'done') ").strip().lower()
+        
+        if choice in ['0', 'done', 'no', 'skip', 'exit', 'none']:
+            print("\n🚢 Harbor: Sounds good! Remember, these resources are always available")
+            print("          if you need them later. 988 is available 24/7.\n")
+            break
+        
+        try:
+            choice_num = int(choice)
+            
+            if choice_num in [1, 2, 3, 4]:
+                if choice_num not in shown_categories:
+                    display_resources_by_category(choice_num)
+                    shown_categories.add(choice_num)
+                    print(f"\n✓ Showed category {choice_num}")
+                else:
+                    print(f"\n(You've already seen category {choice_num})")
+                
+                if len(shown_categories) >= 4:
+                    print("\n🚢 Harbor: You've seen all individual categories!")
+                    more = input("          Need anything else? (yes/no) ").strip().lower()
+                    if not more.startswith('y'):
+                        break
+            
+            elif choice_num == 5:
+                # Show all
+                for cat in [1, 2, 3, 4]:
+                    if cat not in shown_categories:
+                        display_resources_by_category(cat)
+                        shown_categories.add(cat)
+                print("\n✓ Showed all resources")
+                break
+            
+            else:
+                print("🚢 Harbor: Please choose a number between 0-5, or type 'done'.\n")
+        
+        except ValueError:
+            if choice in ['yes', 'y']:
+                print("🚢 Harbor: Great! Which category? (1-5)\n")
+            else:
+                print("🚢 Harbor: Please choose a number between 0-5, or type 'done'.\n")
+
+
+def display_crisis_only_resources():
+    """
+    Minimal resource display for crisis cases.
+    Shows only essential crisis hotlines without overwhelming the user.
+    """
+    print("\n" + "═"*70)
+    print("  🆘 IMMEDIATE SUPPORT AVAILABLE 24/7".center(70))
+    print("═"*70)
+    print("\n📞 **988 - Suicide & Crisis Lifeline**")
+    print("    Call or text 988 anytime, day or night")
+    print("    Free, confidential support")
+    print("\n💬 **Crisis Text Line**")
+    print("    Text HOME to 741741")
+    print("    Free crisis counseling via text")
+    print("\n🚨 **Emergency Services**")
+    print("    Call 911 for immediate emergency assistance")
+    print("\n💙 **TheAdamProject.org**")
+    print("    1,300+ free mental health providers nationwide")
+    print("═"*70 + "\n")
+
+
+# =====================================================
 # State Mapping and Location Parsing
 # =====================================================
 
@@ -2497,28 +2802,36 @@ def run_pipeline():
     print("          below are available 24/7.")
     print("─"*70)
     
-    # Display emergency resources reminder
-    print("\n" + "═"*70)
-    print("  📋 ADDITIONAL RESOURCES & 24/7 CRISIS SUPPORT".center(70))
-    print("═"*70)
-    print("📞 Call/Text 988 (Suicide & Crisis Lifeline)")
-    print("💬 Text HOME to 741741 (Crisis Text Line)")
-    print("🏥 Call 1-800-662-4357 (SAMHSA National Helpline)")
-    print("💙 Visit www.TheAdamProject.org (1,300+ free providers nationwide)")
-    print("═"*70 + "\n")
+    # ═══════════════════════════════════════════════════════════════
+    # Phase 2: Hybrid Resource Display (Crisis vs. Non-Crisis)
+    # ═══════════════════════════════════════════════════════════════
     
-    # ═══════════════════════════════════════════════════════════════
-    # Phase 4: Feature 12 - Comprehensive Online Resources
-    # ═══════════════════════════════════════════════════════════════
-    # Display comprehensive online mental health resources with direct website links
-    print(display_online_resources())
-    print()
+    crisis_severity = empathy_result.get('severity') if empathy_result.get('is_crisis') else None
+    
+    if crisis_severity in ['immediate', 'high']:
+        # Crisis case: Show minimal, focused resources only
+        display_crisis_only_resources()
+        
+        # Skip interactive menu - go straight to follow-up
+        print("🚢 Harbor: I've provided the most important resources above.")
+        print("          Please reach out to them right away.\n")
+    
+    else:
+        # Non-crisis case: Show brief reminder + interactive menu
+        print("\n" + "═"*70)
+        print("  📋 QUICK RESOURCE REMINDER".center(70))
+        print("═"*70)
+        print("📞 Remember: 988 and Crisis Text Line (741741) available 24/7 if needed")
+        print("💙 TheAdamProject.org: 1,300+ free providers nationwide")
+        print("═"*70 + "\n")
+        
+        # Interactive resource menu
+        show_resource_menu(user_name)
     
     # ═══════════════════════════════════════════════════════════════
     # Phase 4: Feature 11 - Follow-up Support Reminders
     # ═══════════════════════════════════════════════════════════════
     # Provide severity-based follow-up recommendations and next steps
-    crisis_severity = empathy_result.get('severity') if empathy_result.get('is_crisis') else None
     has_user_insurance = additional_info.get('insurance', {}).get('has_insurance', False)
     
     print(display_followup_support(user_name, severity=crisis_severity, has_insurance=has_user_insurance))
