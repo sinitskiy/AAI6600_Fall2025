@@ -2361,42 +2361,45 @@ def handle_out_of_scope_request(user_name, user_message, intent_result):
     intent = intent_result['intent']
     
     if intent == 'unrelated':
-        # Completely off-topic - polite redirect
+        # Completely off-topic - redirect to mental health focus WITHOUT recommending other chatbots
         print(f"\n🚢 Harbor: Hi {user_name}, I appreciate you reaching out!")
-        print("          However, I specialize specifically in mental health support.")
+        print("          I specialize specifically in mental health support.")
         print("          I help people find therapists, counselors, and mental health")
         print("          resources.\n")
-        print("          For your request, you might want to try:")
-        print("          • Your school's general help desk or student services")
-        print("          • A general AI assistant like ChatGPT or Google")
-        print("          • The specific service department for your question\n")
-        print("          If you're experiencing stress, anxiety, or other mental health")
-        print("          concerns, I'm here to help with that! Would you like to talk")
-        print("          about your mental health instead?\n")
+        print("          Are you looking for help with:")
+        print("          • Anxiety, depression, or other emotional concerns")
+        print("          • Stress, overwhelm, or burnout")
+        print("          • Finding a therapist or counselor")
+        print("          • Mental health resources or support\n")
+        print("          If yes, I'm here to help! If you have a different concern,")
+        print("          please feel free to ask your question again and I'll do my")
+        print("          best to understand how I can support you.\n")
         
         response = input("You: ").strip().lower()
-        if response and any(word in response for word in ['yes', 'yeah', 'sure', 'ok', 'okay', 'actually']):
+        if response and any(word in response for word in ['yes', 'yeah', 'sure', 'ok', 'okay', 'actually', 'help', 'need', 'find', 'mental', 'therapy', 'anxious', 'depressed', 'stress']):
             print(f"\n🚢 Harbor: Great! I'm here to listen. What's on your mind?\n")
             return True
         else:
-            print(f"\n🚢 Harbor: No problem, {user_name}. Take care, and feel free to come")
-            print("          back anytime you need mental health support! 💙\n")
+            print(f"\n🚢 Harbor: No problem, {user_name}. If you change your mind or have")
+            print("          mental health concerns in the future, please come back.")
+            print("          I'm here to help! 💙\n")
             return False
     
     elif intent == 'related_but_out_of_scope':
-        # Related topic - connect to mental health
+        # Related topic - connect to mental health WITHOUT dismissing their concern
         print(f"\n🚢 Harbor: Thanks for sharing that, {user_name}.")
         print("          I hear you're dealing with some challenges right now.\n")
-        print("          While I can't help directly with scheduling/classes/technical")
-        print("          issues, I do notice you might be experiencing stress or feeling")
-        print("          overwhelmed by this situation.\n")
+        print("          While my specialty is mental health support (finding therapists,")
+        print("          counselors, and emotional wellness resources), I notice you might")
+        print("          be experiencing stress or feeling overwhelmed by this situation.\n")
         print("          Sometimes when we're struggling with everyday challenges, it can")
-        print("          take a toll on our mental health. Would you like to talk about")
-        print("          how this is affecting you emotionally? I can help you find support")
-        print("          for managing stress, anxiety, or other feelings you might be having.\n")
+        print("          take a toll on our mental health and emotional wellbeing.")
+        print("          Would you like to talk about how this is affecting you emotionally?")
+        print("          I can help you find support for managing stress, anxiety, or other")
+        print("          feelings you might be experiencing.\n")
         
         response = input("You: ").strip().lower()
-        if response and any(word in response for word in ['yes', 'yeah', 'sure', 'ok', 'okay', 'actually', 'feel', 'stress', 'anxious', 'overwhelm']):
+        if response and any(word in response for word in ['yes', 'yeah', 'sure', 'ok', 'okay', 'actually', 'feel', 'stress', 'anxious', 'overwhelm', 'help', 'need', 'hard', 'difficult']):
             print(f"\n🚢 Harbor: I'm glad you're open to talking about this. Let's focus on")
             print("          how you're feeling. Can you tell me more about what you're")
             print("          experiencing emotionally?\n")
