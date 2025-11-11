@@ -1834,7 +1834,39 @@ def harbor_respond_with_empathy(user_name, user_concern, symptoms, category, lan
         urgency_score = severity_assessment['urgency_score']
         
         # Display crisis resources in appropriate language
-        if language == 'es':
+        if language == 'zh':
+            # Chinese crisis response
+            print("\n" + translate_crisis_resources_to_chinese())
+            
+            if severity == 'immediate':
+                print("\n" + "╔" + "═"*68 + "╗")
+                print("║" + " ⚠️  立即危险 - 需要紧急行动 ⚠️ ".center(68) + "║")
+                print("╚" + "═"*68 + "╝")
+                print(f"\n🚨 紧急程度: {urgency_score}/10 - 立即")
+                print("📞 请立即拨打 988 或 911")
+                print("\n如果您无法拨打电话:")
+                print("  • 前往最近的急诊室")
+                print("  • 请求身边的人帮助您")
+                print("  • 如果您所在地区可以，发短信至911\n")
+            elif severity == 'high':
+                print("\n" + "┌" + "─"*68 + "┐")
+                print("│" + " 🆘 高度紧急 - 请立即联系 ".center(68) + "│")
+                print("└" + "─"*68 + "┘")
+                print(f"\n🚨 紧急程度: {urgency_score}/10 - 高")
+                print("📞 请拨打 988 获取即时支持")
+                print("\n您不必独自面对这一切。现在就可以获得帮助。\n")
+            else:
+                print(f"\n🚨 紧急程度: {urgency_score}/10")
+                print("📞 请考虑拨打 988 获取支持\n")
+            
+            print(f"🚢 Harbor: {user_name}，我很高兴您联系了我。")
+            print("          您所感受的很严重，我想让您知道")
+            print("          您并不孤单。请使用上面的资源")
+            print("          获取即时支持。\n")
+            print(f"          我也在这里帮助您找到持续的护理和支持")
+            print(f"          在您附近。让我问您几个问题，以便我可以")
+            print(f"          为您连接到合适的本地资源。\n")
+        elif language == 'es':
             print("\n" + translate_crisis_resources_to_spanish())
             
             if severity == 'immediate':
@@ -1909,7 +1941,14 @@ def harbor_respond_with_empathy(user_name, user_concern, symptoms, category, lan
         }
     
     # Non-crisis empathetic acknowledgment
-    if language == 'es':
+    if language == 'zh':
+        empathy_messages = {
+            'anxiety': f"🚢 Harbor: {user_name}，谢谢您与我分享这些。焦虑可能会让人感到\n          非常不知所措，而寻求帮助需要勇气。\n          让我问您几个问题，以便为您找到最好的资源。",
+            'depression': f"🚢 Harbor: {user_name}，我很感激您能敞开心扉。抑郁症可能会让人\n          感到孤立，但您正在寻求支持，这是迈出的重要一步。\n          让我问您几个问题来帮助您。",
+            'substance': f"🚢 Harbor: {user_name}，谢谢您信任我。认识到您需要帮助处理物质使用\n          问题是勇敢且重要的一步。\n          让我问您几个问题，以便为您找到最好的资源。",
+            'default': f"🚢 Harbor: {user_name}，谢谢您分享您的情况。我在这里帮助您找到\n          所需的支持。让我问您几个问题。"
+        }
+    elif language == 'es':
         empathy_messages = {
             'anxiety': f"🚢 Harbor: {user_name}, gracias por compartir esto conmigo. La ansiedad puede ser\n          muy abrumadora, y se necesita valentía para buscar ayuda.\n          Déjame hacerte algunas preguntas para encontrar los mejores recursos para ti.",
             'depression': f"🚢 Harbor: {user_name}, agradezco que te hayas abierto sobre esto. La depresión\n          puede ser aislante, pero estás dando un paso importante al\n          buscar apoyo. Déjame hacerte algunas preguntas para ayudarte.",
@@ -1924,13 +1963,13 @@ def harbor_respond_with_empathy(user_name, user_concern, symptoms, category, lan
             'default': f"🚢 Harbor: {user_name}, thank you for sharing what's going on. I'm here to\n          help you find the support you need. Let me ask a few questions."
         }
     
-    # Determine which empathy message to use (works for both English and Spanish keywords)
+    # Determine which empathy message to use (works for English, Spanish, and Chinese keywords)
     concern_lower = concern_text.lower()
-    if any(word in concern_lower for word in ['anxi', 'panic', 'worry', 'ansiedad', 'pánico', 'preocup']):
+    if any(word in concern_lower for word in ['anxi', 'panic', 'worry', 'ansiedad', 'pánico', 'preocup']) or any(word in concern_text for word in ['焦虑', '焦慮', '恐慌', '担心', '擔心']):
         message = empathy_messages['anxiety']
-    elif any(word in concern_lower for word in ['depress', 'sad', 'hopeless', 'triste', 'sin esperanza', 'deprim']):
+    elif any(word in concern_lower for word in ['depress', 'sad', 'hopeless', 'triste', 'sin esperanza', 'deprim']) or any(word in concern_text for word in ['抑郁', '抑鬱', '难过', '難過', '绝望', '絕望']):
         message = empathy_messages['depression']
-    elif any(word in concern_lower for word in ['substance', 'alcohol', 'drug', 'drinking', 'sustancia', 'droga', 'bebida', 'adicción']):
+    elif any(word in concern_lower for word in ['substance', 'alcohol', 'drug', 'drinking', 'sustancia', 'droga', 'bebida', 'adicción']) or any(word in concern_text for word in ['上瘾', '上癮', '酗酒', '毒品']):
         message = empathy_messages['substance']
     else:
         message = empathy_messages['default']
@@ -1952,15 +1991,20 @@ def harbor_respond_with_empathy(user_name, user_concern, symptoms, category, lan
 
 def detect_language(text):
     """
-    Detect if the user is speaking Spanish based on common Spanish words/patterns.
+    Detect if the user is speaking Spanish or Chinese based on common words/patterns.
     
     Args:
         text: User's message text
     
     Returns:
-        str: 'es' for Spanish, 'en' for English
+        str: 'es' for Spanish, 'zh' for Chinese, 'en' for English
     """
     text_lower = text.lower()
+    
+    # Check for Chinese characters first (Unicode range for CJK Unified Ideographs)
+    chinese_char_count = sum(1 for char in text if '\u4e00' <= char <= '\u9fff')
+    if chinese_char_count >= 2:
+        return 'zh'
     
     # Common Spanish indicators that are unlikely to appear in English
     SPANISH_INDICATORS = [
@@ -2014,6 +2058,37 @@ def translate_crisis_resources_to_spanish():
 📞 **Línea Nacional de Prevención del Suicidio (en español)**
     1-888-628-9454
     Disponible 24/7 con consejeros que hablan español
+══════════════════════════════════════════════════════════════════════
+"""
+
+
+def translate_crisis_resources_to_chinese():
+    """
+    Return crisis resources translated to Mandarin Chinese (Simplified).
+    Uses the same US resources but with Chinese text.
+    """
+    return """
+╔══════════════════════════════════════════════════════════════════════╗
+║           🆘 24/7紧急心理健康支持 (美国资源)                          ║
+╚══════════════════════════════════════════════════════════════════════╝
+
+📞 **988 - 全国自杀预防生命线**
+    拨打或发短信至 988，随时可用
+    免费且保密的支持服务（有中文服务）
+
+💬 **危机短信热线**
+    发送 HOME 到 741741
+    免费危机咨询短信服务
+
+🚨 **紧急服务**
+    拨打 911 获取紧急援助
+
+💙 **TheAdamProject.org**
+    全美1300多个免费心理健康服务提供者
+
+📞 **全国自杀预防生命线（中文服务）**
+    1-800-273-8255
+    24/7提供中文咨询服务
 ══════════════════════════════════════════════════════════════════════
 """
 
@@ -2079,7 +2154,46 @@ def classify_user_intent_lightweight(user_message):
         'crisis', 'emergencia', 'ayuda', 'necesito ayuda',
         'solo', 'sola', 'soledad', 'aislado', 'aislada', 'aislamiento',
         'insomnio', 'problemas para dormir', 'pesadillas', 'no puedo dormir',
-        'medicación', 'medicamento', 'receta', 'antidepresivo'
+        'medicación', 'medicamento', 'receta', 'antidepresivo',
+        # Chinese mental health terms (Simplified and Traditional)
+        '焦虑', '焦慮',  # anxiety (Simplified, Traditional)
+        '抑郁', '抑鬱',  # depression
+        '压力', '壓力',  # stress/pressure
+        '难过', '難過',  # sad
+        '痛苦',  # suffering/pain
+        '绝望', '絕望',  # hopeless
+        '自杀', '自殺',  # suicide
+        '想死',  # want to die
+        '活不下去',  # can't go on living
+        '心理', '精神',  # psychological/mental
+        '心理健康',  # mental health
+        '治疗', '治療',  # treatment/therapy
+        '咨询', '諮詢',  # counseling
+        '心理医生', '心理醫生',  # psychologist
+        '精神科医生', '精神科醫生',  # psychiatrist
+        '失眠',  # insomnia
+        '恐慌',  # panic
+        '害怕',  # fear/afraid
+        '担心', '擔心',  # worried
+        '孤独', '孤獨',  # lonely
+        '创伤', '創傷',  # trauma
+        '虐待',  # abuse
+        '悲伤', '悲傷',  # grief/sorrow
+        '自残',  # self-harm
+        '上瘾', '上癮',  # addiction
+        '酗酒',  # alcoholism
+        '毒品',  # drugs
+        '危机', '危機',  # crisis
+        '紧急', '緊急',  # emergency
+        '帮助', '幫助',  # help
+        '需要帮助', '需要幫助',  # need help
+        '药物', '藥物',  # medication
+        '感到', '觉得', '覺得',  # feeling/feel
+        '情绪', '情緒',  # emotion/mood
+        '双相情感障碍',  # bipolar disorder
+        '精神分裂',  # schizophrenia
+        '强迫症', '強迫症',  # OCD
+        '饮食障碍', '飲食障礙',  # eating disorder
     }
     
     OUT_OF_SCOPE_KEYWORDS = {
@@ -2101,7 +2215,9 @@ def classify_user_intent_lightweight(user_message):
     }
     
     # Check for clear mental health indicators (high confidence)
-    mental_health_matches = sum(1 for keyword in MENTAL_HEALTH_KEYWORDS if keyword in message_lower)
+    # For Chinese characters, check original message; for English/Spanish, check lowercase
+    mental_health_matches = sum(1 for keyword in MENTAL_HEALTH_KEYWORDS 
+                               if keyword in message_lower or keyword in user_message)
     if mental_health_matches >= 1:
         return {
             'intent': 'mental_health',
