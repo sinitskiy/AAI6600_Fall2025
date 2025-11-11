@@ -32,6 +32,7 @@ import numpy as np
 import re
 import json
 import requests
+import google.generativeai as genai
 
 # =====================================================
 # Crisis Detection System (Hybrid: Keywords + Embeddings + Gemini)
@@ -64,6 +65,21 @@ CRISIS_REFERENCE_PHRASES = [
     "I wish I was dead",
     "I'm going to take my own life"
 ]
+
+# =====================================================
+# Conversation State Management (Phase 6)
+# =====================================================
+# Tracks conversation flow to enable natural dialogue before resource collection
+# Modes: greeting → concern_gathering → supportive_dialogue → resource_transition → facility_collection
+# =====================================================
+
+CONVERSATION_MODES = {
+    'greeting': 'Initial greeting and name collection',
+    'concern_gathering': 'Understanding user\'s concern',
+    'supportive_dialogue': 'Empathetic support and advice phase',
+    'resource_transition': 'Transitioning to facility search',
+    'facility_collection': 'Gathering location and insurance details'
+}
 
 def initialize_crisis_detection():
     """
@@ -1986,6 +2002,220 @@ def harbor_respond_with_empathy(user_name, user_concern, symptoms, category, lan
 
 
 # =====================================================
+# Conversational Support System (Phase 6)
+# =====================================================
+
+def harbor_conversational_response(user_name, user_concern, conversation_history, current_mode='supportive_dialogue', max_turns=3):
+    """
+    Engage in brief supportive conversation before transitioning to resources.
+    
+    Uses Gemini to provide empathetic, context-aware responses that:
+    1. Acknowledge the user's stress/concerns
+    2. Offer brief, actionable advice
+    3. Build rapport before asking for location/insurance
+    4. Naturally transition to resource-finding
+    
+    Args:
+        user_name: User's name
+        user_concern: What they're struggling with
+        conversation_history: Full conversation so far
+        current_mode: Current conversation phase (default: 'supportive_dialogue')
+        max_turns: Maximum conversation turns before transition (default: 3)
+    
+    Returns:
+        dict: {
+            'conversation_summary': str,
+            'ready_for_resources': bool,
+            'updated_concern': str,
+            'conversation_history': list
+        }
+    """
+    print(f"\n{'─'*70}")
+    print("💬 Supportive Conversation Mode")
+    print(f"{'─'*70}\n")
+    
+    # Track conversation turns in this supportive phase
+    support_turns = []
+    turn_count = 0
+    
+    # Detect stress type for better context
+    concern_lower = user_concern.lower()
+    stress_indicators = {
+        'academic': ['exam', 'test', 'assignment', 'homework', 'class', 'school', 'study'],
+        'work': ['job', 'work', 'boss', 'coworker', 'career', 'interview'],
+        'relationship': ['relationship', 'partner', 'family', 'friend', 'breakup'],
+        'time_management': ['plan', 'organize', 'schedule', 'time', 'overwhelm', 'too much'],
+        'general_anxiety': ['anxious', 'anxiety', 'worried', 'panic', 'nervous']
+    }
+    
+    detected_stress_type = 'general'
+    for stress_type, keywords in stress_indicators.items():
+        if any(kw in concern_lower for kw in keywords):
+            detected_stress_type = stress_type
+            break
+    
+    # Build conversation history string
+    history_str = "\n".join([
+        f"{'User' if turn['role'] == 'USER' else 'Harbor'}: {turn['message']}"
+        for turn in conversation_history[-5:]  # Last 5 turns for context
+    ])
+    
+    # Conversational loop (2-3 turns)
+    while turn_count < max_turns:
+        turn_count += 1
+        
+        # Determine conversation stage
+        if turn_count == 1:
+            stage = "initial_support"
+            instruction = """Respond empathetically and offer 2-3 brief, actionable stress management tips. 
+            Ask an open-ended question to understand their situation better. Keep it conversational and warm."""
+        elif turn_count == 2:
+            stage = "deeper_exploration"
+            instruction = """Acknowledge what they shared. Provide specific, practical advice based on their situation.
+            Show understanding and validate their feelings. Ask how they're coping or what would help most."""
+        else:  # turn_count == 3 (final turn)
+            stage = "resource_transition"
+            instruction = """Acknowledge their situation warmly. Connect their stress to mental health impact.
+            Suggest that talking to a professional could help develop long-term coping strategies.
+            Ask if they'd like help finding someone to talk to. Be gentle but clear in the transition."""
+        
+        try:
+            # Get API key
+            config_path = os.path.join(os.path.dirname(__file__), "config.json")
+            with open(config_path) as f:
+                config = json.load(f)
+            api_key = config.get("GEMINI_API_KEY")
+            
+            if not api_key:
+                print("⚠️  Warning: No Gemini API key found. Using fallback response.\n")
+                return fallback_conversational_response(user_name, user_concern, turn_count)
+            
+            # Build prompt for this turn
+            prompt = f"""You are Harbor, an empathetic mental health support assistant.
+
+Conversation stage: {stage} (Turn {turn_count} of {max_turns})
+User's name: {user_name}
+Detected stress type: {detected_stress_type}
+Original concern: "{user_concern}"
+
+Recent conversation:
+{history_str}
+
+Latest from user: "{support_turns[-1] if support_turns else user_concern}"
+
+TASK: {instruction}
+
+IMPORTANT:
+- Keep response to 2-4 sentences
+- Be warm, empathetic, and natural
+- Don't be repetitive - build on previous exchanges
+- If this is turn {max_turns}, ASK if they want help finding a counselor/therapist
+- Use {user_name}'s name occasionally but not every message
+
+Respond ONLY with your message to the user (no JSON, no formatting, just the message):"""
+
+            # Call Gemini
+            genai.configure(api_key=api_key)
+            model = genai.GenerativeModel("gemini-2.0-flash-exp")
+            
+            response = model.generate_content(
+                prompt,
+                generation_config=genai.types.GenerationConfig(
+                    temperature=0.7,
+                    max_output_tokens=300
+                )
+            )
+            
+            harbor_response = response.text.strip()
+            
+            # Display Harbor's response
+            print(f"🚢 Harbor: {harbor_response}\n")
+            
+            # Get user's response
+            if turn_count < max_turns:
+                user_response = input("You: ").strip()
+                if not user_response:
+                    user_response = "..." # Handle empty input
+                support_turns.append(user_response)
+                conversation_history.append({'role': 'BOT', 'message': harbor_response})
+                conversation_history.append({'role': 'USER', 'message': user_response})
+            else:
+                # Final turn - get yes/no for resources
+                user_response = input("You: ").strip().lower()
+                support_turns.append(user_response)
+                conversation_history.append({'role': 'BOT', 'message': harbor_response})
+                conversation_history.append({'role': 'USER', 'message': user_response})
+                
+                # Check if they want resources
+                wants_resources = any(word in user_response for word in [
+                    'yes', 'sure', 'okay', 'yeah', 'yea', 'help', 'find', 'please',
+                    'would', 'that would', 'sounds good', 'i think so', 'i do'
+                ])
+                
+                if wants_resources:
+                    print()
+                    return {
+                        'conversation_summary': f"Discussed {detected_stress_type} stress. {' '.join(support_turns[:2])}",
+                        'ready_for_resources': True,
+                        'updated_concern': f"{detected_stress_type} stress affecting mental health and wellbeing",
+                        'conversation_history': conversation_history
+                    }
+                else:
+                    print(f"\n🚢 Harbor: That's completely okay, {user_name}. If you change your mind")
+                    print("          or need support in the future, I'm here to help! 💙\n")
+                    return {
+                        'conversation_summary': f"Provided support for {detected_stress_type} stress. User declined resources.",
+                        'ready_for_resources': False,
+                        'updated_concern': user_concern,
+                        'conversation_history': conversation_history
+                    }
+        
+        except Exception as e:
+            print(f"⚠️  Note: Conversation system had an issue ({e}). Using fallback.\n")
+            return fallback_conversational_response(user_name, user_concern, turn_count)
+    
+    # Should not reach here, but just in case
+    return {
+        'conversation_summary': f"Discussed stress and concerns",
+        'ready_for_resources': True,
+        'updated_concern': user_concern,
+        'conversation_history': conversation_history
+    }
+
+
+def fallback_conversational_response(user_name, user_concern, turn_count):
+    """
+    Fallback responses if Gemini API is unavailable.
+    Uses pre-written empathetic messages.
+    """
+    print(f"🚢 Harbor: {user_name}, I hear you're going through a stressful time.")
+    print("          While I'm having trouble with my conversation system right now,")
+    print("          I can still help you find support resources.\n")
+    print("          Would you like me to help you find a counselor or therapist")
+    print("          who can help you manage this stress long-term?\n")
+    
+    user_response = input("You: ").strip().lower()
+    
+    wants_resources = any(word in user_response for word in ['yes', 'sure', 'okay', 'yeah', 'help', 'find'])
+    
+    if wants_resources:
+        return {
+            'conversation_summary': f"User experiencing stress, wants support",
+            'ready_for_resources': True,
+            'updated_concern': "stress and overwhelm affecting mental health",
+            'conversation_history': []
+        }
+    else:
+        print(f"\n🚢 Harbor: No problem, {user_name}. Take care! 💙\n")
+        return {
+            'conversation_summary': "User declined resources",
+            'ready_for_resources': False,
+            'updated_concern': user_concern,
+            'conversation_history': []
+        }
+
+
+# =====================================================
 # Language Detection & Translation (Phase 3 Enhancement)
 # =====================================================
 
@@ -2888,6 +3118,49 @@ def run_pipeline():
         conversation_history.append({'role': 'USER', 'message': mental_health_concern})
         user_concern = mental_health_concern
         turn_count += 1
+    
+    # Step 2.6: Conversational Support Phase (Phase 6)
+    # If user asked for advice/help with stress (not direct therapist request),
+    # engage in supportive conversation before jumping to location collection
+    concern_lower = user_concern.lower()
+    conversation_triggers = [
+        'help me', 'can you help', 'what should i do', 'how do i', 'advice',
+        'plan', 'organize', 'manage', 'cope', 'deal with', 'handle',
+        'figure out', 'struggling with', 'dont know what to do', "don't know"
+    ]
+    
+    direct_resource_requests = [
+        'find a therapist', 'find a counselor', 'need a therapist', 'want therapy',
+        'mental health services', 'where can i get help', 'treatment', 'find help'
+    ]
+    
+    needs_conversation = any(trigger in concern_lower for trigger in conversation_triggers)
+    wants_direct_resources = any(request in concern_lower for request in direct_resource_requests)
+    
+    # Engage in conversation if they asked for help/advice (not direct resource request)
+    if needs_conversation and not wants_direct_resources:
+        conversation_result = harbor_conversational_response(
+            user_name=user_name,
+            user_concern=user_concern,
+            conversation_history=conversation_history,
+            current_mode='supportive_dialogue',
+            max_turns=3
+        )
+        
+        # Update conversation history
+        conversation_history = conversation_result['conversation_history']
+        
+        # Check if they want resources after conversation
+        if not conversation_result['ready_for_resources']:
+            return {
+                'status': 'conversation_only',
+                'summary': conversation_result['conversation_summary'],
+                'no_resources_needed': True
+            }
+        
+        # If they DO want resources, update concern and continue
+        user_concern = conversation_result['updated_concern']
+        print(f"\n{'─'*70}\n")
     
     print("\n" + "─"*70)
     print("⚙️  Analyzing your needs...")
