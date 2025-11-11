@@ -966,6 +966,73 @@ def parse_location_input(location_string):
     return city, found_state
 
 
+def validate_us_location(city, state, raw_input=None):
+    """
+    Validate that the provided location is within the United States.
+    
+    Checks if the state is a valid US state code and detects common
+    non-US location indicators.
+    
+    Args:
+        city: City name (can be None)
+        state: State code (2-letter abbreviation)
+        raw_input: Original user input (optional, for better detection)
+    
+    Returns:
+        tuple: (is_valid: bool, error_message: str, country_detected: str or None)
+    """
+    # List of valid US state codes (including DC)
+    VALID_US_STATES = [
+        'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA', 
+        'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD',
+        'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ',
+        'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC',
+        'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY', 'DC'
+    ]
+    
+    # Common non-US indicators (countries and provinces/regions)
+    NON_US_INDICATORS = {
+        'canada': ['ontario', 'quebec', 'british columbia', 'alberta', 'manitoba', 
+                   'saskatchewan', 'nova scotia', 'new brunswick', 'montreal', 
+                   'toronto', 'vancouver', 'calgary', 'ottawa', 'edmonton', 'canada'],
+        'uk': ['london', 'england', 'scotland', 'wales', 'northern ireland', 
+               'manchester', 'birmingham', 'liverpool', 'edinburgh', 'glasgow',
+               'united kingdom', 'uk'],
+        'mexico': ['mexico city', 'guadalajara', 'monterrey', 'cancun', 'tijuana', 'mexico'],
+        'australia': ['sydney', 'melbourne', 'brisbane', 'perth', 'adelaide', 'australia'],
+        'other': ['paris', 'berlin', 'tokyo', 'beijing', 'dubai', 'singapore']
+    }
+    
+    # Check raw input first (most reliable for detecting country names)
+    if raw_input:
+        raw_lower = raw_input.lower()
+        for country, indicators in NON_US_INDICATORS.items():
+            if any(indicator in raw_lower for indicator in indicators):
+                country_name = "Canada" if country == "canada" else "the UK" if country == "uk" else country.upper()
+                return False, f"I can only search for facilities in the United States.", country_name
+    
+    # Check if state is invalid
+    if state and state.upper() not in VALID_US_STATES:
+        # Check if it matches a known non-US state/province code
+        non_us_codes = ['ON', 'QC', 'BC', 'AB', 'MB', 'SK', 'NS', 'NB',  # Canada
+                        'NSW', 'VIC', 'QLD', 'WA', 'SA']  # Australia
+        if state.upper() in non_us_codes:
+            return False, "I can only search for facilities in the United States.", "Canada or Australia"
+        else:
+            return False, "I didn't recognize that state code. Please use a US state (e.g., NC, CA, TX).", None
+    
+    # Check city for non-US indicators
+    if city:
+        city_lower = city.lower()
+        for country, indicators in NON_US_INDICATORS.items():
+            if any(indicator in city_lower for indicator in indicators):
+                country_name = "Canada" if country == "canada" else "the UK" if country == "uk" else country.upper()
+                return False, f"I can only search for facilities in the United States.", country_name
+    
+    # Valid US location
+    return True, "", None
+
+
 def fast_search_scored_csv(scored_csv_path, city=None, state=None, zipcode=None, top_n=5):
     """
     Lightweight search over a pre-scored CSV file.
@@ -2155,6 +2222,71 @@ def run_pipeline():
                 city = parsed_city
             if parsed_state:
                 state = parsed_state
+            
+            # Validate US location (pass raw input for better country detection)
+            is_valid, error_msg, detected_country = validate_us_location(city, state, location_input)
+            
+            if not is_valid:
+                print(f"\n🚢 Harbor: {error_msg}")
+                
+                if detected_country:
+                    print(f"          It looks like you're in {detected_country}.")
+                    print("\n          I specialize in US mental health resources, but here are")
+                    print("          some international resources that may help:\n")
+                    print("          📞 Crisis Support:")
+                    if 'Canada' in detected_country:
+                        print("              • Canada Suicide Prevention: 1-833-456-4566")
+                        print("              • Crisis Text Line Canada: Text 686868")
+                        print("              • Kids Help Phone: 1-800-668-6868")
+                    elif 'UK' in detected_country or 'United Kingdom' in detected_country:
+                        print("              • Samaritans (UK): 116 123")
+                        print("              • Shout (Text): 85258")
+                        print("              • Mind UK: mind.org.uk")
+                    else:
+                        print("              • Befrienders Worldwide: befrienders.org")
+                        print("              • International Assoc. for Suicide Prevention: iasp.info")
+                    
+                    print(f"\n          💙 For local resources, search: '{city} mental health services'")
+                    print("          💙 Or visit: findahelpline.com (global directory)\n")
+                else:
+                    print("          Please provide a US city and state.\n")
+                
+                # Ask if they want to provide US location instead
+                retry = input("🚢 Harbor: Would you like to search for US facilities instead? (yes/no) ").strip().lower()
+                
+                if retry.startswith('y'):
+                    # Re-ask for US location
+                    print("\n🚢 Harbor: Great! Let's find US resources for you.\n")
+                    location_input = ""
+                    while not location_input:
+                        location_input = input("          What US city and state? (e.g., Charlotte, NC)\n\nYou: ").strip()
+                        if not location_input:
+                            print("🚢 Harbor: Please enter a US location.\n")
+                    
+                    parsed_city, parsed_state = parse_location_input(location_input)
+                    if parsed_city:
+                        city = parsed_city
+                    if parsed_state:
+                        state = parsed_state
+                    
+                    # Validate again
+                    is_valid, error_msg, _ = validate_us_location(city, state)
+                    if not is_valid:
+                        print(f"\n🚢 Harbor: {error_msg}")
+                        print("          I'll need a valid US location to continue the search.\n")
+                        return {
+                            'status': 'invalid_location',
+                            'message': 'User provided non-US location after retry'
+                        }
+                else:
+                    print("\n🚢 Harbor: I understand. I hope the international resources help.")
+                    print("          Feel free to return if you need US-based resources later.")
+                    print("\n          💙 Remember: You deserve support, no matter where you are.\n")
+                    return {
+                        'status': 'non_us_location',
+                        'location': {'city': city, 'state': state},
+                        'country': detected_country
+                    }
     
     # If still missing, ask individually
     if not city and turn_count < max_turns:
