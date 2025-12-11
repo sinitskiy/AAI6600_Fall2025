@@ -1,0 +1,31 @@
+# API Keys & Secrets
+config.json
+*.env
+.env
+
+# Data files
+data/*.csv
+data/*.json
+data/*.pkl
+!data/.gitkeep
+
+# Logs
+logs/*.log
+logs/*.txt
+!logs/.gitkeep
+conversation_logs/*.txt
+conversation_logs/*.json
+!conversation_logs/.gitkeep
+
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# OS
+.DS_Store
+
+# Models
+models/
+.cache/

@@ -1,0 +1,6 @@
+{
+  "OPENAI_API_KEY": "sk-your-actual-openai-api-key-here",
+  "MODEL": "gpt-4o-mini",
+  "MAX_TOKENS": 500,
+  "TEMPERATURE": 0.7
+}
