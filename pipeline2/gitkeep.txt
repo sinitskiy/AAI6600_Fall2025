@@ -1,2 +1,0 @@
-# This file ensures the data/ directory is tracked by git
-# Add your CSV files here (they will be ignored by .gitignore)
