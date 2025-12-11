@@ -121,7 +121,7 @@ class FacilityScorer:
             score = 2 + (similarity - 0.20) / 0.10 * 2
         elif similarity < 0.40:
             score = 4 + (similarity - 0.30) / 0.10 * 2
-        elif similarity < 0.40:
+        elif similarity < 0.50:
             score = 6 + (similarity - 0.40) / 0.10 * 2
         else:
             score = 8 + (similarity - 0.50) / 0.50 * 2
