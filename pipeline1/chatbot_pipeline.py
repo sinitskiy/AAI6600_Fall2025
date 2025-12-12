@@ -35,6 +35,9 @@ import requests
 import google.generativeai as genai
 from openai import OpenAI
 
+#  Global variable for outputting JSON data (for testing/debugging)
+OUTPUT_JSON_DATA = False
+
 # =====================================================
 # Crisis Detection System (Hybrid: Keywords + Embeddings + Gemini)
 # =====================================================
@@ -1648,7 +1651,7 @@ def harbor_greet():
 
 Start by greeting the user warmly and asking for their name. Keep your greeting brief and friendly (2-3 sentences max).
 
-Example: "Hello! I'm Harbor, and I'm here to help you find the mental health support you need. What's your name?"
+Example: "Hello! I'm Harbor, and I'm here to help you find the support you need. What's your name?"
 """
     
     headers = {"Content-Type": "application/json"}
@@ -1670,7 +1673,7 @@ Example: "Hello! I'm Harbor, and I'm here to help you find the mental health sup
         return greeting
     except Exception as e:
         # Fallback if API fails
-        return "Hello! I'm Harbor, and I'm here to help you find the mental health support you need. What's your name?"
+        return "Hello! I'm Harbor, and I'm here to help you find the support you need. What's your name?"
 
 
 def harbor_ask_concern(user_name, conversation_history):
@@ -1840,7 +1843,7 @@ IMPORTANT:
                 'missing_fields': ['city', 'state', 'insurance']
             }
     except Exception as e:
-        print(f"Warning: Info extraction failed: {e}")
+        # print(f"Warning: Info extraction failed: {e}")
         return {
             'user_name': None,
             'category': None,
@@ -3135,17 +3138,19 @@ def call_facility_matcher(classification, additional_info):
             
             if output_format == 'both':
                 # Show both formats
-                print("\n" + "┌" + "─"*68 + "┐")
-                print("│" + "  📄 SIMPLE VIEW  ".center(68) + "│")
-                print("└" + "─"*68 + "┘")
+                if OUTPUT_JSON_DATA:
+                    print("\n" + "┌" + "─"*68 + "┐")
+                    print("│" + "  📄 SIMPLE VIEW  ".center(68) + "│")
+                    print("└" + "─"*68 + "┘")
                 formatted_simple = format_facility_results(facilities, output_format='simple')
                 print("\n" + formatted_simple)
                 
-                print("\n" + "┌" + "─"*68 + "┐")
-                print("│" + "  📋 JSON VIEW  ".center(68) + "│")
-                print("└" + "─"*68 + "┘")
-                formatted_json = format_facility_results(facilities, output_format='json')
-                print("\n" + formatted_json)
+                if OUTPUT_JSON_DATA:
+                    print("\n" + "┌" + "─"*68 + "┐")
+                    print("│" + "  📋 JSON VIEW  ".center(68) + "│")
+                    print("└" + "─"*68 + "┘")
+                    formatted_json = format_facility_results(facilities, output_format='json')
+                    print("\n" + formatted_json)
             else:
                 # Show single format
                 formatted = format_facility_results(facilities, output_format=output_format)
@@ -3186,7 +3191,7 @@ def run_pipeline():
     """
     
     print("\n" + "═"*70)
-    print("  🚢 HARBOR - Mental Health Support Assistant".center(70))
+    print("  🚢 HARBOR - Support Assistant".center(70))
     print("  AAI6600 Fall 2025".center(70))
     print("═"*70)
     print("\nWelcome! I'm here to listen and help you find the support you need.")
@@ -3843,8 +3848,8 @@ def main():
     try:
         result = run_pipeline()
         
-        print("\n[Pipeline execution completed successfully]")
-        print(f"Status: {result['status']}")
+        # print("\n[Pipeline execution completed successfully]")
+        # print(f"Status: {result['status']}")
         
     except KeyboardInterrupt:
         print("\n\nPipeline interrupted by user.")
